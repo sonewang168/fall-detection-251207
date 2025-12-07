@@ -186,7 +186,7 @@ fall-detection-251207/
 開啟手機瀏覽器，前往：
 
 ```
-https://sonewang168.github.io/fall-detection-251207/app.html
+https://你的帳號.github.io/fall-detection-251207/app.html
 ```
 
 即可開始使用本機監測功能！
@@ -290,7 +290,7 @@ https://xxxx-xxxx.ngrok-free.app
 
 ### 📱 客戶端使用（你的手機）
 
-1. 開啟 APP：`https://sonewang168.github.io/fall-detection-251207/app.html`
+1. 開啟 APP：`https://你的帳號.github.io/fall-detection-251207/app.html`
 2. 切換到「🏠 遠端監控」模式
 3. 貼上 Ngrok 網址
 4. 點擊「連線」
