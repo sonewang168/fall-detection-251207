@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>樂齡守護 - 遠端監控</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+    <link rel="manifest" href="data:application/json,{'name':'樂齡守護','short_name':'樂齡守護','start_url':'.','display':'standalone','background_color':'%230a0a1a','theme_color':'%230a0a1a'}">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        :root {
+            --primary: #00d4ff;
+            --primary-glow: rgba(0, 212, 255, 0.5);
+            --secondary: #7b2cbf;
+            --danger: #ff3366;
+            --warning: #ffcc00;
+            --success: #00ff88;
+            --bg-dark: #0a0a1a;
+            --bg-card: #12122a;
+            --text: #ffffff;
+            --text-muted: #8888aa;
+            --gradient-cyber: linear-gradient(135deg, #00d4ff, #7b2cbf, #ff3366);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+        
+        .status-bar { height: env(safe-area-inset-top, 20px); min-height: 20px; }
+        
+        .container {
+            padding: 16px;
+            padding-bottom: calc(30px + env(safe-area-inset-bottom, 20px));
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .header { text-align: center; margin-bottom: 20px; }
+        
+        .header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            background: var(--gradient-cyber);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+        
+        /* 連線設定卡片 */
+        .connect-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        
+        .connect-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .server-input {
+            flex: 1;
+            padding: 14px 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 14px;
+        }
+        
+        .server-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+        
+        .server-input::placeholder { color: rgba(255,255,255,0.3); }
+        
+        .btn {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn:active { transform: scale(0.98); }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #0099cc);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #00cc66);
+            color: #0a0a1a;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #cc0033);
+            color: white;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            color: var(--primary);
+        }
+        
+        .btn-full { width: 100%; margin-top: 12px; }
+        
+        /* 連線狀態 */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+        
+        .connection-status.disconnected {
+            background: rgba(255, 51, 102, 0.1);
+            color: var(--danger);
+        }
+        
+        .connection-status.connecting {
+            background: rgba(255, 204, 0, 0.1);
+            color: var(--warning);
+        }
+        
+        .connection-status.connected {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--success);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        
+        .status-dot.pulse { animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        /* 影像區域 */
+        .video-section {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: linear-gradient(135deg, #0a0a1a, #12122a);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            margin-bottom: 16px;
+        }
+        
+        .video-section img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .video-placeholder {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+        
+        .video-placeholder.hidden { display: none; }
+        
+        .video-placeholder-icon {
+            font-size: 56px;
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .video-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+        }
+        
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+        
+        .live-badge {
+            background: var(--danger);
+            color: white;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .live-badge.active { display: flex; }
+        
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .time-badge {
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+        }
+        
+        /* 狀態卡片 */
+        .status-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .status-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--gradient-cyber);
+        }
+        
+        .status-card.normal::before { background: var(--success); }
+        .status-card.warning::before { background: var(--warning); }
+        .status-card.danger::before { background: var(--danger); animation: dangerFlash 0.5s infinite; }
+        
+        @keyframes dangerFlash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        .status-header { display: flex; align-items: center; gap: 16px; }
+        
+        .status-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .status-info { flex: 1; }
+        .status-title { font-size: 20px; font-weight: 700; }
+        .status-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+        
+        /* 數據面板 */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            font-family: monospace;
+        }
+        
+        .metric-value.danger { color: var(--danger); }
+        .metric-value.warning { color: var(--warning); }
+        .metric-value.success { color: var(--success); }
+        
+        .metric-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            text-transform: uppercase;
+        }
+        
+        /* 控制按鈕 */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        /* 歷史連線 */
+        .history-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+        
+        .history-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .history-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .history-item:last-child { margin-bottom: 0; }
+        
+        .history-url {
+            font-size: 13px;
+            color: var(--primary);
+            word-break: break-all;
+        }
+        
+        .history-delete {
+            color: var(--danger);
+            font-size: 18px;
+            padding: 4px 8px;
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: var(--bg-card);
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 1001;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background: linear-gradient(135deg, #00b894, #00a884); }
+        .toast.error { background: linear-gradient(135deg, var(--danger), #cc0033); }
+        
+        /* 說明區 */
+        .help-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+        
+        .help-section h3 {
+            color: var(--primary);
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        
+        .help-section code {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast -->
+    <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMessage">訊息</span></div>
+    
+    <div class="status-bar"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>📱 樂齡守護</h1>
+            <p>遠端監控客戶端 v2.0</p>
+        </div>
+        
+        <!-- 連線設定 -->
+        <div class="connect-card">
+            <div class="connect-title">
+                <span>🔗</span>
+                <span>伺服器連線</span>
+            </div>
+            <div class="input-row">
+                <input type="text" class="server-input" id="serverUrl" placeholder="輸入 Ngrok 網址或 IP:Port">
+                <button class="btn btn-primary" onclick="connectServer()">連線</button>
+            </div>
+            <div class="connection-status disconnected" id="connectionStatus">
+                <span class="status-dot"></span>
+                <span>尚未連線</span>
+            </div>
+        </div>
+        
+        <!-- 即時影像 -->
+        <div class="video-section">
+            <img id="videoFeed" src="" style="display: none;">
+            <div class="video-placeholder" id="videoPlaceholder">
+                <div class="video-placeholder-icon">🏠</div>
+                <div>輸入伺服器網址開始監控</div>
+            </div>
+            <div class="video-overlay">
+                <div class="badge live-badge" id="liveBadge">
+                    <span class="live-dot"></span>
+                    <span>LIVE</span>
+                </div>
+                <div class="badge time-badge" id="timeBadge">--:--:--</div>
+            </div>
+        </div>
+        
+        <!-- 狀態卡片 -->
+        <div class="status-card" id="statusCard">
+            <div class="status-header">
+                <div class="status-icon" id="statusIcon">🔌</div>
+                <div class="status-info">
+                    <div class="status-title" id="statusTitle">等待連線</div>
+                    <div class="status-subtitle" id="statusSubtitle">請輸入伺服器網址</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 數據面板 -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="angleValue">--°</div>
+                <div class="metric-label">傾斜角度</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="alertCount">--</div>
+                <div class="metric-label">今日警示</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="uptime">--</div>
+                <div class="metric-label">連線時間</div>
+            </div>
+        </div>
+        
+        <!-- 控制按鈕 -->
+        <div class="controls">
+            <button class="btn btn-success" onclick="sendReport()" id="btnReport" disabled>
+                <span>📸</span>
+                <span>立即回報</span>
+            </button>
+            <button class="btn btn-danger" onclick="sendTestAlert()" id="btnTest" disabled>
+                <span>🧪</span>
+                <span>測試警報</span>
+            </button>
+        </div>
+        
+        <button class="btn btn-outline btn-full" onclick="disconnectServer()" id="btnDisconnect" style="display: none;">
+            <span>🔌</span>
+            <span>斷開連線</span>
+        </button>
+        
+        <!-- 歷史連線 -->
+        <div class="history-section" id="historySection">
+            <div class="history-title">📋 最近連線</div>
+            <div id="historyList">
+                <div style="color: var(--text-muted); text-align: center; padding: 20px;">尚無連線紀錄</div>
+            </div>
+        </div>
+        
+        <!-- 說明 -->
+        <div class="help-section">
+            <h3>📖 使用說明</h3>
+            <p>1. 在父母家電腦執行 <code>python remote_monitor.py</code></p>
+            <p>2. 執行 <code>ngrok http 8085</code> 取得公開網址</p>
+            <p>3. 將 Ngrok 網址（如 <code>https://xxxx.ngrok-free.app</code>）貼到上方連線</p>
+            <p>4. 即可遠端查看即時影像與狀態！</p>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 變數 ====================
+        let serverUrl = '';
+        let isConnected = false;
+        let statusInterval = null;
+        let connectTime = null;
+        let connectionHistory = [];
+        
+        // ==================== 初始化 ====================
+        function init() {
+            loadHistory();
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // 載入上次連線
+            const lastUrl = localStorage.getItem('lastServerUrl');
+            if (lastUrl) {
+                document.getElementById('serverUrl').value = lastUrl;
+            }
+        }
+        
+        // ==================== 連線功能 ====================
+        function connectServer() {
+            let url = document.getElementById('serverUrl').value.trim();
+            if (!url) {
+                showToast('❌', '請輸入伺服器網址', 'error');
+                return;
+            }
+            
+            // 自動補上 https
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            
+            // 移除結尾斜線
+            url = url.replace(/\/+$/, '');
+            
+            serverUrl = url;
+            
+            updateConnectionStatus('connecting');
+            showToast('🔄', '連線中...');
+            
+            // 測試連線
+            fetch(`${serverUrl}/api/status`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            })
+                .then(r => {
+                    if (!r.ok) throw new Error('連線失敗');
+                    return r.json();
+                })
+                .then(data => {
+                    isConnected = true;
+                    connectTime = Date.now();
+                    updateConnectionStatus('connected');
+                    showToast('✅', '連線成功！', 'success');
+                    
+                    // 儲存連線
+                    localStorage.setItem('lastServerUrl', serverUrl);
+                    addToHistory(serverUrl);
+                    
+                    // 開始更新
+                    startUpdates();
+                })
+                .catch(e => {
+                    console.error(e);
+                    updateConnectionStatus('disconnected');
+                    showToast('❌', '無法連線到伺服器', 'error');
+                });
+        }
+        
+        function disconnectServer() {
+            isConnected = false;
+            serverUrl = '';
+            connectTime = null;
+            
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+            
+            updateConnectionStatus('disconnected');
+            document.getElementById('videoFeed').style.display = 'none';
+            document.getElementById('videoPlaceholder').classList.remove('hidden');
+            document.getElementById('liveBadge').classList.remove('active');
+            document.getElementById('btnReport').disabled = true;
+            document.getElementById('btnTest').disabled = true;
+            document.getElementById('btnDisconnect').style.display = 'none';
+            
+            document.getElementById('statusCard').className = 'status-card';
+            document.getElementById('statusIcon').textContent = '🔌';
+            document.getElementById('statusTitle').textContent = '已斷線';
+            document.getElementById('statusSubtitle').textContent = '請重新連線';
+            
+            document.getElementById('angleValue').textContent = '--°';
+            document.getElementById('alertCount').textContent = '--';
+            document.getElementById('uptime').textContent = '--';
+            
+            showToast('🔌', '已斷開連線');
+        }
+        
+        function startUpdates() {
+            // 顯示影像
+            const videoFeed = document.getElementById('videoFeed');
+            videoFeed.src = `${serverUrl}/video_feed`;
+            videoFeed.style.display = 'block';
+            videoFeed.onerror = () => {
+                // 影像載入失敗，嘗試重新載入
+                setTimeout(() => {
+                    if (isConnected) {
+                        videoFeed.src = `${serverUrl}/video_feed?t=${Date.now()}`;
+                    }
+                }, 2000);
+            };
+            
+            document.getElementById('videoPlaceholder').classList.add('hidden');
+            document.getElementById('liveBadge').classList.add('active');
+            document.getElementById('btnReport').disabled = false;
+            document.getElementById('btnTest').disabled = false;
+            document.getElementById('btnDisconnect').style.display = 'flex';
+            
+            // 定時更新狀態
+            updateStatus();
+            statusInterval = setInterval(updateStatus, 1000);
+        }
+        
+        function updateStatus() {
+            if (!isConnected) return;
+            
+            fetch(`${serverUrl}/api/status`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    // 更新狀態卡片
+                    const card = document.getElementById('statusCard');
+                    card.className = 'status-card ' + data.status;
+                    document.getElementById('statusIcon').textContent = 
+                        data.status === 'danger' ? '🚨' :
+                        data.status === 'warning' ? '⚠️' :
+                        data.status === 'normal' ? '😊' : '🔍';
+                    document.getElementById('statusTitle').textContent = 
+                        data.status === 'danger' ? '危險！' :
+                        data.status === 'warning' ? '注意！' :
+                        data.status === 'normal' ? '正常' : '搜尋中';
+                    document.getElementById('statusSubtitle').textContent = data.message;
+                    
+                    // 更新數據
+                    const angleEl = document.getElementById('angleValue');
+                    angleEl.textContent = data.angle.toFixed(1) + '°';
+                    angleEl.className = 'metric-value ' + 
+                        (data.angle > 50 ? 'danger' : data.angle > 35 ? 'warning' : 'success');
+                    
+                    document.getElementById('alertCount').textContent = data.alert_count || 0;
+                    
+                    // 連線時間
+                    if (connectTime) {
+                        const elapsed = Math.floor((Date.now() - connectTime) / 1000);
+                        const m = Math.floor(elapsed / 60);
+                        const s = elapsed % 60;
+                        document.getElementById('uptime').textContent = 
+                            m > 0 ? `${m}分${s}秒` : `${s}秒`;
+                    }
+                })
+                .catch(e => {
+                    console.error('狀態更新失敗:', e);
+                    // 連線可能斷了
+                    if (isConnected) {
+                        updateConnectionStatus('connecting');
+                    }
+                });
+        }
+        
+        function updateConnectionStatus(status) {
+            const el = document.getElementById('connectionStatus');
+            el.className = 'connection-status ' + status;
+            
+            const dot = el.querySelector('.status-dot');
+            dot.className = 'status-dot' + (status === 'connecting' ? ' pulse' : '');
+            
+            el.querySelector('span:last-child').textContent = 
+                status === 'connected' ? '已連線' :
+                status === 'connecting' ? '連線中...' : '尚未連線';
+        }
+        
+        // ==================== 控制功能 ====================
+        function sendReport() {
+            if (!isConnected) return;
+            showToast('📸', '發送回報中...');
+            
+            fetch(`${serverUrl}/api/report`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    showToast('✅', data.message, 'success');
+                })
+                .catch(e => {
+                    showToast('❌', '發送失敗', 'error');
+                });
+        }
+        
+        function sendTestAlert() {
+            if (!isConnected) return;
+            showToast('🧪', '發送測試警報...');
+            
+            fetch(`${serverUrl}/api/test_alert`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    showToast('✅', data.message, 'success');
+                })
+                .catch(e => {
+                    showToast('❌', '發送失敗', 'error');
+                });
+        }
+        
+        // ==================== 歷史紀錄 ====================
+        function loadHistory() {
+            const saved = localStorage.getItem('connectionHistory');
+            if (saved) {
+                connectionHistory = JSON.parse(saved);
+                renderHistory();
+            }
+        }
+        
+        function addToHistory(url) {
+            // 移除重複
+            connectionHistory = connectionHistory.filter(u => u !== url);
+            // 加到最前面
+            connectionHistory.unshift(url);
+            // 最多保留 5 筆
+            if (connectionHistory.length > 5) {
+                connectionHistory = connectionHistory.slice(0, 5);
+            }
+            localStorage.setItem('connectionHistory', JSON.stringify(connectionHistory));
+            renderHistory();
+        }
+        
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            if (connectionHistory.length === 0) {
+                list.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">尚無連線紀錄</div>';
+                return;
+            }
+            
+            list.innerHTML = connectionHistory.map((url, i) => `
+                <div class="history-item" onclick="useHistoryUrl('${url}')">
+                    <span class="history-url">${url}</span>
+                    <span class="history-delete" onclick="event.stopPropagation(); deleteHistory(${i})">✕</span>
+                </div>
+            `).join('');
+        }
+        
+        function useHistoryUrl(url) {
+            document.getElementById('serverUrl').value = url;
+            connectServer();
+        }
+        
+        function deleteHistory(index) {
+            connectionHistory.splice(index, 1);
+            localStorage.setItem('connectionHistory', JSON.stringify(connectionHistory));
+            renderHistory();
+        }
+        
+        // ==================== 工具 ====================
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('timeBadge').textContent = now.toLocaleTimeString('zh-TW');
+        }
+        
+        function showToast(icon, message, type = '') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastIcon').textContent = icon;
+            document.getElementById('toastMessage').textContent = message;
+            toast.className = 'toast show' + (type ? ' ' + type : '');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        
+        // ==================== 啟動 ====================
+        init();
+    </script>
+</body>
+</html>

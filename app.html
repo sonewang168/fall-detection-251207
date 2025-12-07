@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>樂齡守護 v3.0</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root {
+            --primary: #00d4ff; --primary-dark: #0099cc; --secondary: #7b2cbf; --danger: #ff3366;
+            --warning: #ffcc00; --success: #00ff88; --bg-dark: #0a0a1a; --bg-card: #12122a;
+            --text: #ffffff; --text-muted: #8888aa;
+            --gradient-cyber: linear-gradient(135deg, #00d4ff, #7b2cbf, #ff3366);
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text); min-height: 100vh; min-height: 100dvh; overflow-x: hidden; }
+        
+        /* ==================== 酷炫開機動畫 ==================== */
+        .loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-dark);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; transition: opacity 0.8s, visibility 0.8s;
+            perspective: 1000px; overflow: hidden;
+        }
+        .loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        
+        .loading-screen::before {
+            content: ''; position: absolute; width: 300%; height: 300%;
+            background: radial-gradient(ellipse at center, rgba(123, 44, 191, 0.15) 0%, rgba(0, 212, 255, 0.05) 30%, transparent 60%);
+            animation: bgRotate 10s linear infinite;
+        }
+        @keyframes bgRotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .grid-floor {
+            position: absolute; bottom: 0; left: -50%; width: 200%; height: 40%;
+            background: linear-gradient(transparent 0%, rgba(123, 44, 191, 0.1) 100%),
+                repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0, 212, 255, 0.1) 50px, rgba(0, 212, 255, 0.1) 51px),
+                repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(123, 44, 191, 0.1) 50px, rgba(123, 44, 191, 0.1) 51px);
+            transform: perspective(500px) rotateX(60deg);
+            animation: gridScroll 3s linear infinite;
+        }
+        @keyframes gridScroll { 0% { background-position: 0 0; } 100% { background-position: 50px 50px; } }
+        
+        .particles { position: absolute; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+        .particle { position: absolute; width: 4px; height: 4px; border-radius: 50%; opacity: 0; animation: particleFloat 4s infinite ease-out; }
+        .particle:nth-child(1) { left: 10%; background: #00d4ff; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 25%; background: #7b2cbf; animation-delay: 0.5s; }
+        .particle:nth-child(3) { left: 40%; background: #ff3366; animation-delay: 1s; }
+        .particle:nth-child(4) { left: 55%; background: #00d4ff; animation-delay: 1.5s; }
+        .particle:nth-child(5) { left: 70%; background: #7b2cbf; animation-delay: 2s; }
+        .particle:nth-child(6) { left: 85%; background: #ff3366; animation-delay: 2.5s; }
+        .particle:nth-child(7) { left: 15%; background: #00ff88; animation-delay: 3s; }
+        .particle:nth-child(8) { left: 80%; background: #ffcc00; animation-delay: 3.5s; }
+        @keyframes particleFloat { 0% { bottom: -10px; opacity: 0; transform: scale(0); } 10% { opacity: 1; transform: scale(1); } 90% { opacity: 0.8; } 100% { bottom: 100%; opacity: 0; transform: scale(0.3) translateX(30px); } }
+        
+        .scan-line { position: absolute; width: 100%; height: 3px; background: linear-gradient(90deg, transparent 0%, var(--primary) 50%, transparent 100%); box-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary); animation: scanMove 2.5s ease-in-out infinite; opacity: 0.6; }
+        @keyframes scanMove { 0%, 100% { top: 10%; } 50% { top: 90%; } }
+        
+        .loading-container { position: relative; width: 220px; height: 220px; }
+        
+        .ring-outer { position: absolute; width: 220px; height: 220px; top: 0; left: 0; border: 3px solid transparent; border-radius: 50%; border-top-color: var(--primary); border-right-color: var(--primary); box-shadow: 0 0 30px rgba(0, 212, 255, 0.6), 0 0 60px rgba(0, 212, 255, 0.3), inset 0 0 30px rgba(0, 212, 255, 0.1); animation: spinCW 3s linear infinite; }
+        .ring-middle { position: absolute; width: 170px; height: 170px; top: 25px; left: 25px; border: 3px solid transparent; border-radius: 50%; border-bottom-color: var(--secondary); border-left-color: var(--secondary); box-shadow: 0 0 25px rgba(123, 44, 191, 0.6), 0 0 50px rgba(123, 44, 191, 0.3), inset 0 0 25px rgba(123, 44, 191, 0.1); animation: spinCCW 2s linear infinite; }
+        .ring-inner { position: absolute; width: 120px; height: 120px; top: 50px; left: 50px; border: 2px solid transparent; border-radius: 50%; border-top-color: var(--danger); border-right-color: var(--danger); box-shadow: 0 0 20px rgba(255, 51, 102, 0.5), 0 0 40px rgba(255, 51, 102, 0.2); animation: spinCW 1.5s linear infinite; }
+        
+        @keyframes spinCW { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spinCCW { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        
+        .loading-core { position: absolute; width: 80px; height: 80px; top: 70px; left: 70px; background: linear-gradient(135deg, #5a189a 0%, #7b2cbf 50%, #9b4dca 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(123, 44, 191, 0.8), 0 0 80px rgba(123, 44, 191, 0.5), 0 0 120px rgba(123, 44, 191, 0.3), inset 0 2px 10px rgba(255, 255, 255, 0.2); animation: coreFloat 3s ease-in-out infinite, corePulse 2s ease-in-out infinite alternate; }
+        .loading-core::before { content: '樂'; font-size: 42px; font-weight: 900; color: #fff; text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(0, 212, 255, 0.6), 0 0 60px rgba(123, 44, 191, 0.4); animation: textPulse 2s ease-in-out infinite alternate; }
+        @keyframes coreFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
+        @keyframes corePulse { 0% { box-shadow: 0 0 40px rgba(123, 44, 191, 0.8), 0 0 80px rgba(123, 44, 191, 0.5); } 100% { box-shadow: 0 0 60px rgba(123, 44, 191, 1), 0 0 120px rgba(123, 44, 191, 0.7), 0 0 180px rgba(0, 212, 255, 0.4); } }
+        @keyframes textPulse { 0% { opacity: 0.9; } 100% { opacity: 1; text-shadow: 0 0 30px #fff, 0 0 60px var(--primary); } }
+        
+        .loading-text { margin-top: 50px; font-size: 18px; font-weight: 600; letter-spacing: 6px; color: var(--primary); text-shadow: 0 0 20px rgba(0, 212, 255, 0.8); animation: textGlow 1.5s ease-in-out infinite alternate; }
+        @keyframes textGlow { 0% { opacity: 0.6; } 100% { opacity: 1; } }
+        .loading-subtitle { margin-top: 12px; font-size: 13px; color: var(--secondary); letter-spacing: 3px; }
+
+        /* ==================== APP 主體樣式 ==================== */
+        .app-container { display: none; }
+        .app-container.active { display: block; }
+        .safe-top { height: env(safe-area-inset-top, 20px); }
+        .safe-bottom { height: calc(80px + env(safe-area-inset-bottom, 20px)); }
+
+        .header { padding: 16px; text-align: center; }
+        .header h1 { font-size: 24px; background: var(--gradient-cyber); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header .version { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        
+        .mode-switch { display: flex; margin: 0 16px 16px; background: var(--bg-card); border-radius: 16px; padding: 4px; }
+        .mode-btn { flex: 1; padding: 12px; border: none; background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 600; border-radius: 12px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .mode-btn.active { background: var(--primary); color: var(--bg-dark); }
+
+        .page { display: none; padding: 0 16px 16px; }
+        .page.active { display: block; }
+
+        .video-container { position: relative; width: 100%; aspect-ratio: 4/3; background: var(--bg-card); border-radius: 20px; overflow: hidden; margin-bottom: 16px; border: 1px solid rgba(0, 212, 255, 0.2); }
+        .video-container video, .video-container img { width: 100%; height: 100%; object-fit: cover; }
+        .video-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .video-placeholder { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); }
+        .video-placeholder.hidden { display: none; }
+        .video-placeholder-icon { font-size: 48px; margin-bottom: 12px; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .video-overlay { position: absolute; top: 0; left: 0; right: 0; padding: 12px; display: flex; justify-content: space-between; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent); }
+        .badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .live-badge { background: var(--danger); color: white; display: none; align-items: center; gap: 6px; }
+        .live-badge.active { display: flex; }
+        .live-dot { width: 8px; height: 8px; background: white; border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .time-badge { background: rgba(0,0,0,0.5); color: white; }
+
+        .status-card { background: var(--bg-card); border-radius: 20px; padding: 20px; margin-bottom: 16px; position: relative; overflow: hidden; }
+        .status-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gradient-cyber); }
+        .status-card.normal::before { background: var(--success); }
+        .status-card.warning::before { background: var(--warning); }
+        .status-card.danger::before { background: var(--danger); animation: flash 0.5s infinite; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .status-header { display: flex; align-items: center; gap: 16px; }
+        .status-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; background: rgba(0, 212, 255, 0.1); }
+        .status-info { flex: 1; }
+        .status-title { font-size: 20px; font-weight: 700; }
+        .status-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+        .metric-card { background: var(--bg-card); border-radius: 16px; padding: 16px; text-align: center; }
+        .metric-value { font-size: 24px; font-weight: 700; color: var(--primary); font-family: monospace; }
+        .metric-value.danger { color: var(--danger); }
+        .metric-value.warning { color: var(--warning); }
+        .metric-value.success { color: var(--success); }
+        .metric-label { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+        .card { background: var(--bg-card); border-radius: 20px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: var(--primary); }
+
+        .input-group { margin-bottom: 16px; }
+        .input-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; display: block; }
+        .text-input { width: 100%; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(0,0,0,0.3); color: white; font-size: 14px; }
+        .text-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 20px rgba(0, 212, 255, 0.2); }
+        .text-input::placeholder { color: rgba(255,255,255,0.3); }
+        .input-row { display: flex; gap: 10px; }
+        .input-row .text-input { flex: 1; }
+
+        .btn { padding: 14px 20px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
+        .btn-success { background: linear-gradient(135deg, var(--success), #00cc66); color: var(--bg-dark); }
+        .btn-danger { background: linear-gradient(135deg, var(--danger), #cc0033); color: white; }
+        .btn-outline { background: transparent; border: 2px solid rgba(0, 212, 255, 0.3); color: var(--primary); }
+        .btn-full { width: 100%; }
+        .btn-sm { padding: 10px 16px; font-size: 13px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-group { display: flex; gap: 10px; margin-top: 12px; }
+        .btn-group .btn { flex: 1; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+        .report-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; }
+        .report-btn { padding: 12px 8px; background: var(--bg-card); border: 2px solid transparent; border-radius: 12px; color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; text-align: center; }
+        .report-btn:hover { border-color: rgba(0, 212, 255, 0.3); }
+        .report-btn.active { border-color: var(--primary); background: rgba(0, 212, 255, 0.1); color: var(--primary); box-shadow: 0 0 20px rgba(0, 212, 255, 0.2); }
+        .countdown-display { text-align: center; font-size: 14px; color: var(--text-muted); padding: 12px; background: rgba(0,0,0,0.2); border-radius: 12px; }
+        .countdown-display .time { font-size: 28px; font-weight: 700; color: var(--primary); font-family: monospace; }
+
+        .connect-card { background: var(--bg-card); border-radius: 20px; padding: 20px; margin-bottom: 16px; border: 1px solid rgba(0, 212, 255, 0.2); }
+        .connection-status { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px; border-radius: 10px; font-size: 13px; }
+        .connection-status.disconnected { background: rgba(255, 51, 102, 0.1); color: var(--danger); }
+        .connection-status.connecting { background: rgba(255, 204, 0, 0.1); color: var(--warning); }
+        .connection-status.connected { background: rgba(0, 255, 136, 0.1); color: var(--success); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .status-dot.pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } }
+
+        .history-section { background: var(--bg-card); border-radius: 20px; padding: 20px; margin-bottom: 16px; }
+        .history-title { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 12px; }
+        .history-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: all 0.3s; }
+        .history-item:hover { background: rgba(0, 212, 255, 0.1); }
+        .history-url { font-size: 12px; color: var(--primary); word-break: break-all; flex: 1; }
+        .history-delete { color: var(--danger); font-size: 18px; padding: 4px 8px; }
+
+        .api-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+        .api-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .api-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .api-status { font-size: 12px; padding: 4px 10px; border-radius: 20px; }
+        .api-status.set { background: rgba(0, 255, 136, 0.2); color: var(--success); }
+        .api-status.unset { background: rgba(255, 51, 102, 0.2); color: var(--danger); }
+        .help-text { font-size: 12px; color: var(--text-muted); margin-top: 12px; line-height: 1.6; }
+        .help-text a { color: var(--primary); }
+
+        .alert-list { max-height: 400px; overflow-y: auto; }
+        .alert-item { display: flex; gap: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 8px; }
+        .alert-item.danger { border-left: 3px solid var(--danger); }
+        .alert-item.warning { border-left: 3px solid var(--warning); }
+        .alert-item.report { border-left: 3px solid var(--primary); }
+        .alert-icon { font-size: 24px; }
+        .alert-content { flex: 1; }
+        .alert-title { font-weight: 600; font-size: 14px; }
+        .alert-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        .alert-detail { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(18, 18, 42, 0.95); backdrop-filter: blur(20px); display: flex; padding: 8px 16px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px; color: var(--text-muted); font-size: 10px; cursor: pointer; transition: all 0.3s; border-radius: 12px; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 24px; margin-bottom: 4px; }
+
+        .toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-100px); background: var(--bg-card); padding: 14px 24px; border-radius: 50px; font-size: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 1001; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; gap: 10px; }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background: linear-gradient(135deg, #00b894, #00a884); }
+        .toast.error { background: linear-gradient(135deg, var(--danger), #cc0033); }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <!-- 酷炫開機動畫 -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="grid-floor"></div>
+        <div class="particles"><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div></div>
+        <div class="scan-line"></div>
+        <div class="loading-container">
+            <div class="ring-outer"></div>
+            <div class="ring-middle"></div>
+            <div class="ring-inner"></div>
+            <div class="loading-core"></div>
+        </div>
+        <div class="loading-text" id="loadingText">INITIALIZING</div>
+        <div class="loading-subtitle">樂齡守護系統 v3.0</div>
+    </div>
+
+    <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMsg">訊息</span></div>
+
+    <!-- APP 主體 -->
+    <div class="app-container" id="appContainer">
+        <div class="safe-top"></div>
+        <div class="header"><h1>🛡️ 樂齡守護</h1><div class="version">v3.0 整合版</div></div>
+
+        <div class="mode-switch">
+            <button class="mode-btn active" onclick="switchMode('local')"><span>📱</span> 本機監測</button>
+            <button class="mode-btn" onclick="switchMode('remote')"><span>🏠</span> 遠端監控</button>
+        </div>
+
+        <!-- 本機監測 -->
+        <div id="localPages">
+            <div class="page active" id="localHome">
+                <div class="video-container">
+                    <video id="localVideo" autoplay playsinline muted></video>
+                    <canvas id="localCanvas"></canvas>
+                    <div class="video-overlay">
+                        <div class="badge live-badge" id="localLiveBadge"><span class="live-dot"></span><span>LIVE</span></div>
+                        <div class="badge time-badge" id="localTimeBadge">--:--:--</div>
+                    </div>
+                </div>
+                <div class="status-card" id="localStatusCard"><div class="status-header"><div class="status-icon" id="localStatusIcon">🔌</div><div class="status-info"><div class="status-title" id="localStatusTitle">等待啟動</div><div class="status-subtitle" id="localStatusSubtitle">點擊下方開始監測</div></div></div></div>
+                <div class="metrics-grid"><div class="metric-card"><div class="metric-value" id="localAngle">--°</div><div class="metric-label">傾斜角度</div></div><div class="metric-card"><div class="metric-value" id="localAlertCount">0</div><div class="metric-label">今日警示</div></div><div class="metric-card"><div class="metric-value" id="localHeadHeight">--</div><div class="metric-label">頭部高度</div></div></div>
+                <button class="btn btn-success btn-full" id="localStartBtn" onclick="toggleLocalMonitor()"><span>▶️</span><span>開始監測</span></button>
+                <div class="card" style="margin-top:16px"><div class="card-title"><span>⏰</span><span>定時截圖回報</span></div><div class="report-options" id="localReportOptions"><button class="report-btn" onclick="setLocalReportInterval(0,this)">立即</button><button class="report-btn" onclick="setLocalReportInterval(1,this)">1小時</button><button class="report-btn" onclick="setLocalReportInterval(2,this)">2小時</button><button class="report-btn" onclick="setLocalReportInterval(3,this)">3小時</button><button class="report-btn" onclick="setLocalReportInterval(4,this)">4小時</button></div><div class="countdown-display" id="localCountdownDisplay" style="display:none">下次回報：<span class="time" id="localCountdownTime">--:--:--</span></div></div>
+            </div>
+            <div class="page" id="localSettings">
+                <div class="card"><div class="card-title"><span>⚙️</span><span>API 設定</span></div>
+                    <div class="api-item"><div class="api-header"><span class="api-name"><span>💬</span> LINE Bot</span><span class="api-status" id="lineStatus">未設定</span></div><div class="input-group" style="margin-bottom:8px"><label class="input-label">Channel Access Token</label><input type="password" class="text-input" id="lineToken" placeholder="貼上 Token"></div><div class="input-group" style="margin-bottom:8px"><label class="input-label">User ID</label><input type="text" class="text-input" id="lineUserId" placeholder="U... 開頭"></div><div class="btn-group"><button class="btn btn-outline btn-sm" onclick="clearApi('line')">🗑️ 清除</button><button class="btn btn-primary btn-sm" onclick="saveApi('line')">💾 儲存</button><button class="btn btn-success btn-sm" onclick="testLine()">🧪 測試</button></div><div class="help-text">📌 <a href="https://developers.line.biz/console/" target="_blank">LINE Developers</a> → Messaging API</div></div>
+                    <div class="api-item"><div class="api-header"><span class="api-name"><span>🤖</span> Gemini AI</span><span class="api-status" id="geminiStatus">未設定</span></div><div class="input-group" style="margin-bottom:8px"><label class="input-label">API Key</label><input type="password" class="text-input" id="geminiKey" placeholder="AIza... 開頭"></div><div class="btn-group"><button class="btn btn-outline btn-sm" onclick="clearApi('gemini')">🗑️ 清除</button><button class="btn btn-primary btn-sm" onclick="saveApi('gemini')">💾 儲存</button><button class="btn btn-success btn-sm" onclick="testGemini()">🧪 測試</button></div><div class="help-text">📌 <a href="https://aistudio.google.com/apikey" target="_blank">AI Studio</a> → Get API Key</div></div>
+                    <div class="api-item"><div class="api-header"><span class="api-name"><span>🖼️</span> ImgBB 圖床</span><span class="api-status" id="imgbbStatus">未設定</span></div><div class="input-group" style="margin-bottom:8px"><label class="input-label">API Key</label><input type="password" class="text-input" id="imgbbKey" placeholder="32 位字元"></div><div class="btn-group"><button class="btn btn-outline btn-sm" onclick="clearApi('imgbb')">🗑️ 清除</button><button class="btn btn-primary btn-sm" onclick="saveApi('imgbb')">💾 儲存</button><button class="btn btn-success btn-sm" onclick="testImgbb()">🧪 測試</button></div><div class="help-text">📌 <a href="https://api.imgbb.com/" target="_blank">ImgBB API</a></div></div>
+                </div>
+                <div class="card"><div class="card-title"><span>🎚️</span><span>偵測參數</span></div><div class="input-group"><label class="input-label">傾斜角度閾值（度）</label><input type="number" class="text-input" id="angleThreshold" value="35" min="20" max="60"></div><div class="input-group"><label class="input-label">連續異常幀數</label><input type="number" class="text-input" id="frameThreshold" value="15" min="5" max="30"></div><button class="btn btn-primary btn-full" onclick="saveDetectionSettings()">💾 儲存參數</button></div>
+            </div>
+            <div class="page" id="localHistory"><div class="card"><div class="card-title"><span>📋</span><span>警示紀錄</span></div><div class="alert-list" id="localAlertList"><div style="text-align:center;color:var(--text-muted);padding:40px">尚無紀錄</div></div></div><button class="btn btn-outline btn-full" onclick="clearLocalHistory()">🗑️ 清除所有紀錄</button></div>
+        </div>
+
+        <!-- 遠端監控 -->
+        <div id="remotePages" style="display:none">
+            <div class="page active" id="remoteHome">
+                <div class="connect-card"><div class="card-title"><span>🔗</span><span>伺服器連線</span></div><div class="input-row"><input type="text" class="text-input" id="serverUrl" placeholder="輸入 Ngrok 網址"><button class="btn btn-primary" onclick="connectServer()">連線</button></div><div class="connection-status disconnected" id="connectionStatus"><span class="status-dot"></span><span>尚未連線</span></div></div>
+                <div class="video-container"><img id="remoteVideo" src="" style="display:none"><div class="video-placeholder" id="remotePlaceholder"><div class="video-placeholder-icon">🏠</div><div>輸入伺服器網址開始監控</div><div style="font-size:12px;margin-top:8px;color:var(--success)">✅ 影像包含肢體節點追蹤</div></div><div class="video-overlay"><div class="badge live-badge" id="remoteLiveBadge"><span class="live-dot"></span><span>LIVE</span></div><div class="badge time-badge" id="remoteTimeBadge">--:--:--</div></div></div>
+                <div class="status-card" id="remoteStatusCard"><div class="status-header"><div class="status-icon" id="remoteStatusIcon">🔌</div><div class="status-info"><div class="status-title" id="remoteStatusTitle">等待連線</div><div class="status-subtitle" id="remoteStatusSubtitle">請輸入伺服器網址</div></div></div></div>
+                <div class="metrics-grid"><div class="metric-card"><div class="metric-value" id="remoteAngle">--°</div><div class="metric-label">傾斜角度</div></div><div class="metric-card"><div class="metric-value" id="remoteAlertCount">--</div><div class="metric-label">今日警示</div></div><div class="metric-card"><div class="metric-value" id="remoteUptime">--</div><div class="metric-label">連線時間</div></div></div>
+                <div class="controls"><button class="btn btn-success" onclick="sendRemoteReport()" id="btnReport" disabled><span>📸</span><span>立即回報</span></button><button class="btn btn-danger" onclick="sendRemoteTestAlert()" id="btnTestAlert" disabled><span>🧪</span><span>測試警報</span></button></div>
+                <div class="card" id="remoteReportCard" style="display:none"><div class="card-title"><span>⏰</span><span>定時截圖回報</span></div><div class="report-options" id="remoteReportOptions"><button class="report-btn" onclick="setRemoteReportInterval(0,this)">立即</button><button class="report-btn" onclick="setRemoteReportInterval(1,this)">1小時</button><button class="report-btn" onclick="setRemoteReportInterval(2,this)">2小時</button><button class="report-btn" onclick="setRemoteReportInterval(3,this)">3小時</button><button class="report-btn" onclick="setRemoteReportInterval(4,this)">4小時</button></div><div class="countdown-display" id="remoteCountdownDisplay" style="display:none">下次回報：<span class="time" id="remoteCountdownTime">--:--:--</span></div></div>
+                <button class="btn btn-outline btn-full" onclick="disconnectServer()" id="btnDisconnect" style="display:none"><span>🔌</span><span>斷開連線</span></button>
+            </div>
+            <div class="page" id="remoteSettings"><div class="history-section"><div class="history-title">📋 最近連線</div><div id="historyList"><div style="color:var(--text-muted);text-align:center;padding:20px">尚無連線紀錄</div></div></div><div class="card"><div class="card-title"><span>📖</span><span>使用說明</span></div><div class="help-text" style="margin-top:0"><p><strong>伺服器端：</strong></p><p style="margin-top:8px">1. 執行 <code style="background:rgba(0,212,255,0.1);padding:2px 6px;border-radius:4px;color:var(--primary)">python remote_monitor.py</code></p><p style="margin-top:8px">2. 執行 <code style="background:rgba(0,212,255,0.1);padding:2px 6px;border-radius:4px;color:var(--primary)">ngrok http 8085</code></p><p style="margin-top:12px"><strong>功能特色：</strong></p><p style="margin-top:8px">✅ 即時影像 + 肢體節點追蹤</p><p style="margin-top:4px">✅ AI 跌倒偵測</p><p style="margin-top:4px">✅ LINE 通知 + 截圖</p></div></div></div>
+            <div class="page" id="remoteHistory"><div class="card"><div class="card-title"><span>📋</span><span>遠端紀錄</span></div><div class="alert-list" id="remoteAlertList"><div style="text-align:center;color:var(--text-muted);padding:40px">尚無紀錄</div></div></div></div>
+        </div>
+        <div class="safe-bottom"></div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('home')"><span class="nav-icon">🏠</span><span>首頁</span></div>
+        <div class="nav-item" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span><span>設定</span></div>
+        <div class="nav-item" onclick="switchTab('history')"><span class="nav-icon">📋</span><span>紀錄</span></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+    <script>
+        let currentMode='local',currentTab='home';let localPose=null,localCamera=null,isLocalRunning=false,localAbnormalCount=0,localLastAlertTime=0,localTodayAlertCount=0,localAlertHistory=[],localHeadHeightHistory=[],localInitialHeadHeight=null,localReportInterval=0,localReportTimer=null,localNextReportTime=null;let serverUrl='',isRemoteConnected=false,remoteStatusInterval=null,remoteConnectTime=null,connectionHistory=[],remoteAlertHistory=[],remoteReportInterval=0,remoteReportTimer=null,remoteNextReportTime=null;let settings={angleThreshold:35,frameThreshold:15};
+        window.onload=function(){const texts=['INITIALIZING','LOADING AI','CONNECTING','READY'];let i=0;const ti=setInterval(()=>{document.getElementById('loadingText').textContent=texts[Math.min(i++,texts.length-1)]},600);setTimeout(()=>{clearInterval(ti);document.getElementById('loadingScreen').classList.add('hidden');document.getElementById('appContainer').classList.add('active');initApp()},2500)};
+        function initApp(){loadAllSettings();updateApiStatus();loadConnectionHistory();updateTime();setInterval(updateTime,1000);setInterval(updateCountdowns,1000);initLocalPose()}
+        function switchMode(m){currentMode=m;document.querySelectorAll('.mode-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&m==='local')||(i===1&&m==='remote')));document.getElementById('localPages').style.display=m==='local'?'block':'none';document.getElementById('remotePages').style.display=m==='remote'?'block':'none';switchTab('home')}
+        function switchTab(t){currentTab=t;document.querySelectorAll('.nav-item').forEach((n,i)=>n.classList.toggle('active',i===['home','settings','history'].indexOf(t)));const p=currentMode==='local'?'local':'remote';['Home','Settings','History'].forEach(x=>{const el=document.getElementById(p+x);if(el)el.classList.toggle('active',x.toLowerCase()===t)})}
+        function initLocalPose(){localPose=new Pose({locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`});localPose.setOptions({modelComplexity:1,smoothLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});localPose.onResults(onLocalPoseResults)}
+        async function toggleLocalMonitor(){const btn=document.getElementById('localStartBtn');if(!isLocalRunning){try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:640,height:480}});document.getElementById('localVideo').srcObject=stream;localCamera=new Camera(document.getElementById('localVideo'),{onFrame:async()=>{if(localPose)await localPose.send({image:document.getElementById('localVideo')})},width:640,height:480});localCamera.start();isLocalRunning=true;btn.innerHTML='<span>⏹️</span><span>停止監測</span>';btn.className='btn btn-danger btn-full';document.getElementById('localLiveBadge').classList.add('active');showToast('✅','開始監測','success')}catch(e){showToast('❌','無法存取攝影機','error')}}else{if(localCamera)localCamera.stop();const v=document.getElementById('localVideo');if(v.srcObject)v.srcObject.getTracks().forEach(t=>t.stop());isLocalRunning=false;btn.innerHTML='<span>▶️</span><span>開始監測</span>';btn.className='btn btn-success btn-full';document.getElementById('localLiveBadge').classList.remove('active');updateLocalStatus('waiting','等待啟動','點擊上方開始監測')}}
+        function onLocalPoseResults(r){const canvas=document.getElementById('localCanvas'),ctx=canvas.getContext('2d'),video=document.getElementById('localVideo');canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;ctx.clearRect(0,0,canvas.width,canvas.height);if(!r.poseLandmarks){updateLocalStatus('searching','🔍 搜尋中','未偵測到人物');return}drawConnectors(ctx,r.poseLandmarks,POSE_CONNECTIONS,{color:'#00d4ff',lineWidth:3});drawLandmarks(ctx,r.poseLandmarks,{color:'#ff3366',lineWidth:2,radius:5});const lm=r.poseLandmarks,ls=lm[11],rs=lm[12],lh=lm[23],rh=lm[24],nose=lm[0];if(ls.visibility>0.5&&rs.visibility>0.5&&lh.visibility>0.5&&rh.visibility>0.5){const shoulderMid={x:(ls.x+rs.x)/2,y:(ls.y+rs.y)/2},hipMid={x:(lh.x+rh.x)/2,y:(lh.y+rh.y)/2},dx=Math.abs(shoulderMid.x-hipMid.x),dy=Math.abs(shoulderMid.y-hipMid.y),angle=dy<0.001?90:Math.atan(dx/dy)*(180/Math.PI),headDiff=hipMid.y-nose.y;localHeadHeightHistory.push(headDiff);if(localHeadHeightHistory.length>30)localHeadHeightHistory.shift();if(!localInitialHeadHeight&&localHeadHeightHistory.length>=15)localInitialHeadHeight=localHeadHeightHistory.slice(0,15).reduce((a,b)=>a+b)/15;const headHeight=localInitialHeadHeight?headDiff/localInitialHeadHeight:1,isAbnormal=angle>settings.angleThreshold||headHeight<0.5,severity=angle>settings.angleThreshold*1.5||headHeight<0.4?'danger':'warning';ctx.beginPath();ctx.moveTo(shoulderMid.x*canvas.width,shoulderMid.y*canvas.height);ctx.lineTo(hipMid.x*canvas.width,hipMid.y*canvas.height);ctx.strokeStyle=isAbnormal?'#ff3366':'#00ff88';ctx.lineWidth=8;ctx.stroke();ctx.beginPath();ctx.arc(shoulderMid.x*canvas.width,shoulderMid.y*canvas.height,10,0,Math.PI*2);ctx.fillStyle=isAbnormal?'#ff3366':'#00ff88';ctx.fill();ctx.beginPath();ctx.arc(hipMid.x*canvas.width,hipMid.y*canvas.height,10,0,Math.PI*2);ctx.fill();document.getElementById('localAngle').textContent=angle.toFixed(1)+'°';document.getElementById('localAngle').className='metric-value '+(angle>50?'danger':angle>35?'warning':'success');document.getElementById('localHeadHeight').textContent=headHeight.toFixed(2);if(isAbnormal){localAbnormalCount++;if(localAbnormalCount>=settings.frameThreshold){const now=Date.now();if(now-localLastAlertTime>60000){triggerLocalAlert(angle,severity);localLastAlertTime=now}updateLocalStatus('danger','🚨 危險！',`傾斜 ${angle.toFixed(1)}°`)}else{updateLocalStatus('warning','⚠️ 偵測中',`異常 ${Math.round(localAbnormalCount/settings.frameThreshold*100)}%`)}}else{localAbnormalCount=Math.max(0,localAbnormalCount-2);updateLocalStatus('normal','😊 正常',`傾斜 ${angle.toFixed(1)}°`)}}else{updateLocalStatus('searching','🔍 搜尋中','請將攝影機對準全身')}}
+        function updateLocalStatus(s,t,st){document.getElementById('localStatusCard').className='status-card '+s;document.getElementById('localStatusIcon').textContent={danger:'🚨',warning:'⚠️',normal:'😊',searching:'🔍',waiting:'🔌'}[s]||'🔌';document.getElementById('localStatusTitle').textContent=t;document.getElementById('localStatusSubtitle').textContent=st}
+        async function triggerLocalAlert(angle,severity){localTodayAlertCount++;document.getElementById('localAlertCount').textContent=localTodayAlertCount;localStorage.setItem('localTodayAlertCount',localTodayAlertCount);localStorage.setItem('localAlertDate',new Date().toDateString());const imageBase64=captureLocalFrame(),analysis=await analyzeWithGemini(imageBase64),imgUrl=await uploadToImgbb(imageBase64);await sendLineAlert(angle,severity,imgUrl,analysis);const record={type:severity,time:new Date().toLocaleString('zh-TW'),angle:angle.toFixed(1),analysis};localAlertHistory.unshift(record);if(localAlertHistory.length>50)localAlertHistory.pop();localStorage.setItem('localAlertHistory',JSON.stringify(localAlertHistory));updateLocalHistoryUI();showToast('🚨','已發送跌倒警示！','error')}
+        function captureLocalFrame(){const v=document.getElementById('localVideo'),c=document.createElement('canvas');c.width=v.videoWidth||640;c.height=v.videoHeight||480;c.getContext('2d').drawImage(v,0,0);return c.toDataURL('image/jpeg',0.8).split(',')[1]}
+        function setLocalReportInterval(h,btn){document.querySelectorAll('#localReportOptions .report-btn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');if(localReportTimer){clearInterval(localReportTimer);localReportTimer=null}localReportInterval=h;if(h===0){captureAndReportLocal();document.getElementById('localCountdownDisplay').style.display='none'}else{localNextReportTime=Date.now()+h*3600000;document.getElementById('localCountdownDisplay').style.display='block';localReportTimer=setInterval(()=>{if(Date.now()>=localNextReportTime){captureAndReportLocal();localNextReportTime=Date.now()+h*3600000}},1000);showToast('⏰',`已設定每 ${h} 小時回報`,'success')}}
+        async function captureAndReportLocal(){if(!isLocalRunning){showToast('❌','請先開始監測','error');return}showToast('📸','擷取並分析中...');const imageBase64=captureLocalFrame(),analysis=await analyzeWithGemini(imageBase64),imgUrl=await uploadToImgbb(imageBase64);await sendLineReport(imgUrl,analysis);const record={type:'report',time:new Date().toLocaleString('zh-TW'),analysis};localAlertHistory.unshift(record);localStorage.setItem('localAlertHistory',JSON.stringify(localAlertHistory));updateLocalHistoryUI();showToast('✅','回報已發送！','success')}
+        function connectServer(){let url=document.getElementById('serverUrl').value.trim();if(!url){showToast('❌','請輸入伺服器網址','error');return}if(!url.startsWith('http'))url='https://'+url;url=url.replace(/\/+$/,'');serverUrl=url;updateConnectionStatus('connecting');showToast('🔄','連線中...');fetch(`${serverUrl}/api/status`,{method:'GET',mode:'cors',headers:{'Accept':'application/json','ngrok-skip-browser-warning':'true'}}).then(r=>{if(!r.ok)throw new Error();return r.json()}).then(d=>{isRemoteConnected=true;remoteConnectTime=Date.now();updateConnectionStatus('connected');showToast('✅','連線成功！','success');localStorage.setItem('lastServerUrl',serverUrl);addToConnectionHistory(serverUrl);startRemoteUpdates()}).catch(e=>{updateConnectionStatus('disconnected');showToast('❌','無法連線','error')})}
+        function disconnectServer(){isRemoteConnected=false;if(remoteStatusInterval){clearInterval(remoteStatusInterval);remoteStatusInterval=null}if(remoteReportTimer){clearInterval(remoteReportTimer);remoteReportTimer=null}updateConnectionStatus('disconnected');document.getElementById('remoteVideo').style.display='none';document.getElementById('remotePlaceholder').classList.remove('hidden');document.getElementById('remoteLiveBadge').classList.remove('active');document.getElementById('btnReport').disabled=true;document.getElementById('btnTestAlert').disabled=true;document.getElementById('btnDisconnect').style.display='none';document.getElementById('remoteReportCard').style.display='none';document.getElementById('remoteCountdownDisplay').style.display='none';document.querySelectorAll('#remoteReportOptions .report-btn').forEach(b=>b.classList.remove('active'));document.getElementById('remoteStatusCard').className='status-card';document.getElementById('remoteStatusIcon').textContent='🔌';document.getElementById('remoteStatusTitle').textContent='已斷線';document.getElementById('remoteStatusSubtitle').textContent='請重新連線';document.getElementById('remoteAngle').textContent='--°';document.getElementById('remoteAlertCount').textContent='--';document.getElementById('remoteUptime').textContent='--';showToast('🔌','已斷開連線')}
+        function startRemoteUpdates(){const v=document.getElementById('remoteVideo');v.src=`${serverUrl}/video_feed`;v.style.display='block';v.onerror=()=>{if(isRemoteConnected)setTimeout(()=>{v.src=`${serverUrl}/video_feed?t=${Date.now()}`},2000)};document.getElementById('remotePlaceholder').classList.add('hidden');document.getElementById('remoteLiveBadge').classList.add('active');document.getElementById('btnReport').disabled=false;document.getElementById('btnTestAlert').disabled=false;document.getElementById('btnDisconnect').style.display='flex';document.getElementById('remoteReportCard').style.display='block';updateRemoteStatus();remoteStatusInterval=setInterval(updateRemoteStatus,1000)}
+        function updateRemoteStatus(){if(!isRemoteConnected)return;fetch(`${serverUrl}/api/status`,{method:'GET',mode:'cors',headers:{'Accept':'application/json','ngrok-skip-browser-warning':'true'}}).then(r=>r.json()).then(d=>{document.getElementById('remoteStatusCard').className='status-card '+d.status;document.getElementById('remoteStatusIcon').textContent={danger:'🚨',warning:'⚠️',normal:'😊',searching:'🔍'}[d.status]||'🔍';document.getElementById('remoteStatusTitle').textContent={danger:'危險！',warning:'注意！',normal:'正常',searching:'搜尋中'}[d.status]||'搜尋中';document.getElementById('remoteStatusSubtitle').textContent=d.message;const a=document.getElementById('remoteAngle');a.textContent=d.angle.toFixed(1)+'°';a.className='metric-value '+(d.angle>50?'danger':d.angle>35?'warning':'success');document.getElementById('remoteAlertCount').textContent=d.alert_count||0;if(remoteConnectTime){const e=Math.floor((Date.now()-remoteConnectTime)/1000),m=Math.floor(e/60),s=e%60;document.getElementById('remoteUptime').textContent=m>0?`${m}分${s}秒`:`${s}秒`}}).catch(()=>updateConnectionStatus('connecting'))}
+        function updateConnectionStatus(s){const el=document.getElementById('connectionStatus');el.className='connection-status '+s;el.querySelector('.status-dot').className='status-dot'+(s==='connecting'?' pulse':'');el.querySelector('span:last-child').textContent={connected:'已連線',connecting:'連線中...',disconnected:'尚未連線'}[s]}
+        function sendRemoteReport(){if(!isRemoteConnected)return;showToast('📸','發送回報中...');fetch(`${serverUrl}/api/report`,{method:'GET',mode:'cors',headers:{'Accept':'application/json','ngrok-skip-browser-warning':'true'}}).then(r=>r.json()).then(d=>{showToast('✅',d.message,'success');remoteAlertHistory.unshift({type:'report',time:new Date().toLocaleString('zh-TW'),detail:'手動觸發回報'});updateRemoteHistoryUI()}).catch(()=>showToast('❌','發送失敗','error'))}
+        function sendRemoteTestAlert(){if(!isRemoteConnected)return;showToast('🧪','發送測試警報...');fetch(`${serverUrl}/api/test_alert`,{method:'GET',mode:'cors',headers:{'Accept':'application/json','ngrok-skip-browser-warning':'true'}}).then(r=>r.json()).then(d=>{showToast('✅',d.message,'success');remoteAlertHistory.unshift({type:'danger',time:new Date().toLocaleString('zh-TW'),detail:'測試警報'});updateRemoteHistoryUI()}).catch(()=>showToast('❌','發送失敗','error'))}
+        function setRemoteReportInterval(h,btn){document.querySelectorAll('#remoteReportOptions .report-btn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');if(remoteReportTimer){clearInterval(remoteReportTimer);remoteReportTimer=null}remoteReportInterval=h;if(h===0){sendRemoteReport();document.getElementById('remoteCountdownDisplay').style.display='none'}else{remoteNextReportTime=Date.now()+h*3600000;document.getElementById('remoteCountdownDisplay').style.display='block';remoteReportTimer=setInterval(()=>{if(Date.now()>=remoteNextReportTime){sendRemoteReport();remoteNextReportTime=Date.now()+h*3600000}},1000);showToast('⏰',`已設定每 ${h} 小時回報`,'success')}}
+        async function analyzeWithGemini(img){const k=localStorage.getItem('geminiKey');if(!k)return'（未設定 Gemini）';try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${k}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'請用繁體中文，簡短分析（50字內）這張照片中人物的姿態安全狀況：1.姿勢描述 2.是否有跌倒風險 3.建議。如沒看到人請說明。'},{inline_data:{mime_type:'image/jpeg',data:img}}]}]})});const d=await r.json();if(d.candidates)return d.candidates[0].content.parts[0].text}catch(e){}return'（AI 分析失敗）'}
+        async function uploadToImgbb(img){const k=localStorage.getItem('imgbbKey');if(!k)return null;try{const f=new FormData();f.append('image',img);const r=await fetch(`https://api.imgbb.com/1/upload?key=${k}`,{method:'POST',body:f}),d=await r.json();if(d.success)return d.data.url}catch(e){}return null}
+        async function sendLineMessage(t,u,m){try{const r=await fetch('https://corsproxy.io/?'+encodeURIComponent('https://api.line.me/v2/bot/message/push'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${t}`},body:JSON.stringify({to:u,messages:m})});return r.ok}catch(e){}return false}
+        async function sendLineAlert(angle,severity,imgUrl,analysis){const t=localStorage.getItem('lineToken'),u=localStorage.getItem('lineUserId');if(!t||!u)return;const m=[];if(imgUrl)m.push({type:'image',originalContentUrl:imgUrl,previewImageUrl:imgUrl});m.push({type:'text',text:`🚨 跌倒警示！\n\n⏰ ${new Date().toLocaleString('zh-TW')}\n📐 傾斜角度: ${angle}°\n⚡ 程度: ${severity==='danger'?'🚨 嚴重':'⚠️ 中度'}\n\n🤖 AI分析：\n${analysis}\n\n請立即確認安全！\n\n🛡️ 樂齡守護 v3.0`});await sendLineMessage(t,u,m)}
+        async function sendLineReport(imgUrl,analysis){const t=localStorage.getItem('lineToken'),u=localStorage.getItem('lineUserId');if(!t||!u)return;const m=[];if(imgUrl)m.push({type:'image',originalContentUrl:imgUrl,previewImageUrl:imgUrl});m.push({type:'text',text:`📸 定時現況回報\n\n⏰ ${new Date().toLocaleString('zh-TW')}\n\n🤖 AI分析：\n${analysis}\n\n🛡️ 樂齡守護 v3.0`});await sendLineMessage(t,u,m)}
+        function loadAllSettings(){['lineToken','lineUserId','geminiKey','imgbbKey'].forEach(k=>{const v=localStorage.getItem(k);if(v&&document.getElementById(k))document.getElementById(k).value=v});const at=localStorage.getItem('angleThreshold'),ft=localStorage.getItem('frameThreshold');if(at){settings.angleThreshold=parseInt(at);document.getElementById('angleThreshold').value=at}if(ft){settings.frameThreshold=parseInt(ft);document.getElementById('frameThreshold').value=ft}const h=localStorage.getItem('localAlertHistory');if(h){localAlertHistory=JSON.parse(h);updateLocalHistoryUI()}const ad=localStorage.getItem('localAlertDate');if(ad===new Date().toDateString()){localTodayAlertCount=parseInt(localStorage.getItem('localTodayAlertCount')||'0');document.getElementById('localAlertCount').textContent=localTodayAlertCount}const lu=localStorage.getItem('lastServerUrl');if(lu)document.getElementById('serverUrl').value=lu}
+        function updateApiStatus(){const lineOk=localStorage.getItem('lineToken')&&localStorage.getItem('lineUserId'),geminiOk=localStorage.getItem('geminiKey'),imgbbOk=localStorage.getItem('imgbbKey');['line','gemini','imgbb'].forEach(api=>{const el=document.getElementById(api+'Status'),ok=api==='line'?lineOk:api==='gemini'?geminiOk:imgbbOk;el.textContent=ok?'✅ 已設定':'❌ 未設定';el.className='api-status '+(ok?'set':'unset')})}
+        function saveApi(t){if(t==='line'){const tk=document.getElementById('lineToken').value.trim(),u=document.getElementById('lineUserId').value.trim();if(tk)localStorage.setItem('lineToken',tk);if(u)localStorage.setItem('lineUserId',u)}else{const k=document.getElementById(t+'Key').value.trim();if(k)localStorage.setItem(t+'Key',k)}updateApiStatus();showToast('💾','已儲存','success')}
+        function clearApi(t){if(t==='line'){localStorage.removeItem('lineToken');localStorage.removeItem('lineUserId');document.getElementById('lineToken').value='';document.getElementById('lineUserId').value=''}else{localStorage.removeItem(t+'Key');document.getElementById(t+'Key').value=''}updateApiStatus();showToast('🗑️','已清除','success')}
+        async function testLine(){const t=document.getElementById('lineToken').value.trim(),u=document.getElementById('lineUserId').value.trim();if(!t||!u){showToast('❌','請填寫完整','error');return}showToast('📤','測試中...');const r=await sendLineMessage(t,u,[{type:'text',text:'🧪 測試成功！\n\n樂齡守護 v3.0 已連線。\n\n✅ 即時跌倒偵測\n✅ 定時截圖回報\n✅ Gemini AI 分析\n\n🛡️ 安心守護每一刻'}]);if(r){saveApi('line');showToast('✅','LINE 測試成功！','success')}else showToast('❌','Token 或 ID 錯誤','error')}
+        async function testGemini(){const k=document.getElementById('geminiKey').value.trim();if(!k){showToast('❌','請輸入 API Key','error');return}showToast('🧪','測試中...');try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${k}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'1+1=?'}]}]})});if((await r.json()).candidates){saveApi('gemini');showToast('✅','Gemini 測試成功！','success')}else showToast('❌','API Key 無效','error')}catch(e){showToast('❌','測試失敗','error')}}
+        async function testImgbb(){const k=document.getElementById('imgbbKey').value.trim();if(!k){showToast('❌','請輸入 API Key','error');return}showToast('🧪','測試上傳中...');const c=document.createElement('canvas');c.width=100;c.height=100;const ctx=c.getContext('2d');ctx.fillStyle='#7b2cbf';ctx.fillRect(0,0,100,100);ctx.fillStyle='#fff';ctx.font='14px sans-serif';ctx.fillText('TEST',30,55);try{const f=new FormData();f.append('image',c.toDataURL('image/png').split(',')[1]);const r=await fetch(`https://api.imgbb.com/1/upload?key=${k}`,{method:'POST',body:f});if((await r.json()).success){saveApi('imgbb');showToast('✅','ImgBB 測試成功！','success')}else showToast('❌','API Key 無效','error')}catch(e){showToast('❌','上傳失敗','error')}}
+        function saveDetectionSettings(){settings.angleThreshold=parseInt(document.getElementById('angleThreshold').value);settings.frameThreshold=parseInt(document.getElementById('frameThreshold').value);localStorage.setItem('angleThreshold',settings.angleThreshold);localStorage.setItem('frameThreshold',settings.frameThreshold);showToast('💾','參數已儲存','success')}
+        function updateLocalHistoryUI(){const l=document.getElementById('localAlertList');if(!localAlertHistory.length){l.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:40px">尚無紀錄</div>';return}l.innerHTML=localAlertHistory.slice(0,30).map(a=>`<div class="alert-item ${a.type}"><div class="alert-icon">${a.type==='danger'?'🚨':a.type==='warning'?'⚠️':'📸'}</div><div class="alert-content"><div class="alert-title">${a.type==='report'?'定時回報':'跌倒警示'}</div><div class="alert-time">${a.time}</div>${a.angle?`<div class="alert-detail">傾斜: ${a.angle}°</div>`:''}${a.analysis?`<div class="alert-detail">${a.analysis.substring(0,60)}...</div>`:''}</div></div>`).join('')}
+        function updateRemoteHistoryUI(){const l=document.getElementById('remoteAlertList');if(!remoteAlertHistory.length){l.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:40px">尚無紀錄</div>';return}l.innerHTML=remoteAlertHistory.slice(0,30).map(a=>`<div class="alert-item ${a.type}"><div class="alert-icon">${a.type==='danger'?'🚨':'📸'}</div><div class="alert-content"><div class="alert-title">${a.type==='report'?'遠端回報':'遠端警示'}</div><div class="alert-time">${a.time}</div>${a.detail?`<div class="alert-detail">${a.detail}</div>`:''}</div></div>`).join('')}
+        function clearLocalHistory(){if(!confirm('確定清除所有紀錄？'))return;localAlertHistory=[];localStorage.removeItem('localAlertHistory');updateLocalHistoryUI();showToast('🗑️','已清除','success')}
+        function loadConnectionHistory(){const s=localStorage.getItem('connectionHistory');if(s){connectionHistory=JSON.parse(s);renderConnectionHistory()}}
+        function addToConnectionHistory(u){connectionHistory=connectionHistory.filter(x=>x!==u);connectionHistory.unshift(u);if(connectionHistory.length>5)connectionHistory=connectionHistory.slice(0,5);localStorage.setItem('connectionHistory',JSON.stringify(connectionHistory));renderConnectionHistory()}
+        function renderConnectionHistory(){const l=document.getElementById('historyList');if(!connectionHistory.length){l.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:20px">尚無連線紀錄</div>';return}l.innerHTML=connectionHistory.map((u,i)=>`<div class="history-item" onclick="useHistoryUrl('${u}')"><span class="history-url">${u}</span><span class="history-delete" onclick="event.stopPropagation();deleteConnectionHistory(${i})">✕</span></div>`).join('')}
+        function useHistoryUrl(u){document.getElementById('serverUrl').value=u;switchMode('remote');connectServer()}
+        function deleteConnectionHistory(i){connectionHistory.splice(i,1);localStorage.setItem('connectionHistory',JSON.stringify(connectionHistory));renderConnectionHistory()}
+        function updateTime(){const n=new Date().toLocaleTimeString('zh-TW');document.getElementById('localTimeBadge').textContent=n;document.getElementById('remoteTimeBadge').textContent=n}
+        function updateCountdowns(){if(localNextReportTime&&localReportInterval>0){const r=Math.max(0,localNextReportTime-Date.now()),h=Math.floor(r/3600000),m=Math.floor((r%3600000)/60000),s=Math.floor((r%60000)/1000);document.getElementById('localCountdownTime').textContent=`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`}if(remoteNextReportTime&&remoteReportInterval>0){const r=Math.max(0,remoteNextReportTime-Date.now()),h=Math.floor(r/3600000),m=Math.floor((r%3600000)/60000),s=Math.floor((r%60000)/1000);document.getElementById('remoteCountdownTime').textContent=`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`}}
+        function showToast(i,m,t=''){const toast=document.getElementById('toast');document.getElementById('toastIcon').textContent=i;document.getElementById('toastMsg').textContent=m;toast.className='toast show'+(t?' '+t:'');setTimeout(()=>toast.classList.remove('show'),3000)}
+    </script>
+</body>
+</html>

@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>樂齡防傾倒監測系統 v2.0</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        :root {
+            --primary: #00d4ff;
+            --primary-glow: rgba(0, 212, 255, 0.5);
+            --secondary: #7b2cbf;
+            --danger: #ff3366;
+            --warning: #ffcc00;
+            --success: #00ff88;
+            --bg-dark: #0a0a1a;
+            --bg-card: #12122a;
+            --text: #ffffff;
+            --text-muted: #8888aa;
+            --line-green: #06C755;
+            --gradient-cyber: linear-gradient(135deg, #00d4ff, #7b2cbf, #ff3366);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+        
+        /* ==================== 酷炫開機動畫 ==================== */
+        .loading-screen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            overflow: hidden;
+        }
+        
+        .loading-screen.hide {
+            animation: fadeOutZoom 1s ease forwards;
+        }
+        
+        @keyframes fadeOutZoom {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.5); pointer-events: none; }
+        }
+        
+        /* 3D 透視網格地板 */
+        .cyber-grid {
+            position: absolute;
+            top: 50%; left: 0; right: 0;
+            height: 100%;
+            background: 
+                linear-gradient(90deg, rgba(0, 212, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(rgba(0, 212, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(300px) rotateX(60deg);
+            transform-origin: top;
+            animation: gridScroll 15s linear infinite;
+        }
+        
+        @keyframes gridScroll {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 -1000px; }
+        }
+        
+        /* 旋轉外環容器 */
+        .ring-container {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin-bottom: 40px;
+        }
+        
+        /* 外環1 - 最大 */
+        .ring-outer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 220px; height: 220px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary);
+            border-right-color: var(--primary);
+            border-radius: 50%;
+            animation: spinCW 2s linear infinite;
+            box-shadow: 0 0 30px var(--primary-glow), inset 0 0 30px var(--primary-glow);
+        }
+        
+        /* 外環2 - 中 */
+        .ring-middle {
+            position: absolute;
+            top: 25px; left: 25px;
+            width: 170px; height: 170px;
+            border: 3px solid transparent;
+            border-bottom-color: var(--secondary);
+            border-left-color: var(--secondary);
+            border-radius: 50%;
+            animation: spinCCW 1.5s linear infinite;
+            box-shadow: 0 0 25px rgba(123, 44, 191, 0.5);
+        }
+        
+        /* 外環3 - 小 */
+        .ring-inner {
+            position: absolute;
+            top: 55px; left: 55px;
+            width: 110px; height: 110px;
+            border: 3px solid transparent;
+            border-top-color: var(--danger);
+            border-bottom-color: var(--danger);
+            border-radius: 50%;
+            animation: spinCW 1s linear infinite;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+        }
+        
+        /* 六角形核心 */
+        .hexagon-core {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70px; height: 70px;
+            background: var(--gradient-cyber);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            animation: pulseGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes spinCW {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes spinCCW {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px var(--primary), 0 0 40px var(--secondary); transform: translate(-50%, -50%) scale(1); }
+            50% { box-shadow: 0 0 40px var(--primary), 0 0 80px var(--secondary); transform: translate(-50%, -50%) scale(1.05); }
+        }
+        
+        /* 掃描線 */
+        .scan-line {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            animation: scanDown 2.5s ease-in-out infinite;
+            box-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary);
+        }
+        
+        @keyframes scanDown {
+            0%, 100% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        /* 漂浮粒子 */
+        .particles { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }
+        .particle {
+            position: absolute;
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            animation: floatUp 4s ease-in-out infinite;
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-50px) scale(1); opacity: 0; }
+        }
+        
+        /* 數據流文字 */
+        .data-stream {
+            position: absolute;
+            font-family: monospace;
+            font-size: 10px;
+            color: var(--primary);
+            opacity: 0.3;
+            writing-mode: vertical-rl;
+            animation: dataFall 8s linear infinite;
+        }
+        
+        @keyframes dataFall {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        
+        /* 載入文字 */
+        .loading-text {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+        
+        .loading-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: var(--gradient-cyber);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+        
+        .loading-subtitle {
+            color: var(--text-muted);
+            font-size: 12px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+        
+        .loading-bar {
+            width: 280px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        
+        .loading-progress {
+            height: 100%;
+            background: var(--gradient-cyber);
+            border-radius: 2px;
+            animation: loadProgress 2.5s ease-in-out infinite;
+            box-shadow: 0 0 15px var(--primary);
+        }
+        
+        @keyframes loadProgress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        
+        .loading-status {
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 11px;
+            color: var(--primary);
+            letter-spacing: 1px;
+        }
+        
+        /* ==================== 主介面 ==================== */
+        .status-bar { height: env(safe-area-inset-top, 20px); min-height: 20px; background: var(--bg-dark); }
+        
+        .container {
+            padding: 16px;
+            padding-bottom: calc(100px + env(safe-area-inset-bottom, 20px));
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .header { text-align: center; margin-bottom: 20px; }
+        
+        .header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            background: var(--gradient-cyber);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+        
+        .version-badge {
+            display: inline-block;
+            background: var(--gradient-cyber);
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+            font-weight: 600;
+        }
+        
+        /* 攝影機 */
+        .camera-section {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: linear-gradient(135deg, #0a0a1a, #12122a);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        
+        #videoElement, #canvasElement {
+            position: absolute;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        
+        .camera-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+        }
+        
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+        
+        .live-badge {
+            background: var(--danger);
+            color: white;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+        }
+        
+        .live-badge.active { display: flex; animation: pulseBadge 1.5s infinite; }
+        
+        @keyframes pulseBadge {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 51, 102, 0.5); }
+            50% { box-shadow: 0 0 35px rgba(255, 51, 102, 0.8); }
+        }
+        
+        .live-dot { width: 8px; height: 8px; background: white; border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .fps-badge { background: rgba(0, 212, 255, 0.2); color: var(--primary); border: 1px solid rgba(0, 212, 255, 0.3); }
+        
+        .camera-placeholder {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+        
+        .camera-placeholder.hidden { display: none; }
+        .camera-placeholder-icon { font-size: 56px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        
+        /* 狀態卡片 */
+        .status-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .status-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--gradient-cyber);
+        }
+        
+        .status-card.normal::before { background: var(--success); }
+        .status-card.warning::before { background: var(--warning); }
+        .status-card.danger::before { background: var(--danger); animation: dangerFlash 0.5s infinite; }
+        .status-card.danger { animation: shake 0.5s; box-shadow: 0 0 30px rgba(255, 51, 102, 0.3); }
+        
+        @keyframes dangerFlash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        
+        .status-header { display: flex; align-items: center; gap: 16px; }
+        .status-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; background: rgba(0, 212, 255, 0.1); }
+        .status-info { flex: 1; }
+        .status-title { font-size: 20px; font-weight: 700; }
+        .status-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+        
+        /* 數據面板 */
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+        
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .metric-value { font-size: 28px; font-weight: 700; color: var(--primary); font-family: monospace; }
+        .metric-value.danger { color: var(--danger); }
+        .metric-value.warning { color: var(--warning); }
+        .metric-value.success { color: var(--success); }
+        .metric-label { font-size: 11px; color: var(--text-muted); margin-top: 8px; text-transform: uppercase; }
+        
+        /* 按鈕 */
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), #0099cc); color: white; box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, var(--danger), #cc0033); color: white; }
+        .btn-success { background: linear-gradient(135deg, var(--success), #00cc66); color: #0a0a1a; }
+        .btn-line { background: linear-gradient(135deg, var(--line-green), #05b34d); color: white; }
+        .btn-cyber { background: var(--gradient-cyber); color: white; }
+        .btn-outline { background: transparent; border: 2px solid rgba(0, 212, 255, 0.3); color: var(--primary); }
+        
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+        
+        /* 定時截圖回報 */
+        .report-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 16px;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+        }
+        
+        .report-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        
+        .report-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        
+        .report-option {
+            padding: 14px 6px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .report-option:hover { border-color: var(--primary); color: var(--primary); }
+        
+        .report-option.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--bg-dark);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.4);
+        }
+        
+        .report-option-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+        
+        .report-status {
+            margin-top: 16px;
+            padding: 14px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            font-size: 13px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .report-status.idle { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+        .report-countdown { font-family: monospace; font-size: 18px; font-weight: 700; }
+        
+        /* 卡片 */
+        .card { background: var(--bg-card); border-radius: 20px; padding: 20px; margin-top: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        .card-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        
+        /* 設定 */
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 15px; }
+        .setting-input { width: 80px; padding: 10px; border: none; border-radius: 10px; background: rgba(0, 212, 255, 0.1); color: var(--primary); font-size: 15px; text-align: center; font-weight: 600; font-family: monospace; }
+        .setting-input:focus { outline: none; box-shadow: 0 0 0 2px var(--primary); }
+        
+        .input-group { margin-top: 12px; }
+        .input-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block; }
+        .text-input { width: 100%; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(0,0,0,0.3); color: white; font-size: 14px; font-family: monospace; }
+        .text-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 20px rgba(0, 212, 255, 0.2); }
+        .text-input::placeholder { color: rgba(255,255,255,0.3); }
+        
+        .help-text { font-size: 12px; color: var(--text-muted); margin-top: 12px; line-height: 1.7; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; }
+        .help-text a { color: var(--primary); text-decoration: none; }
+        
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+        
+        /* 開關 */
+        .toggle-switch { position: relative; width: 52px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 16px; cursor: pointer; transition: 0.3s; }
+        .toggle-switch.active { background: var(--success); box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+        .toggle-switch::after { content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; background: white; border-radius: 50%; transition: 0.3s; }
+        .toggle-switch.active::after { transform: translateX(20px); }
+        
+        /* 歷史 */
+        .history-empty { text-align: center; color: var(--text-muted); padding: 30px; }
+        .history-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .history-item:last-child { border-bottom: none; }
+        .history-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .history-icon.danger { background: rgba(255, 51, 102, 0.2); }
+        .history-icon.warning { background: rgba(255, 204, 0, 0.2); }
+        .history-icon.report { background: rgba(0, 212, 255, 0.2); }
+        .history-info { flex: 1; }
+        .history-title { font-size: 14px; font-weight: 500; }
+        .history-time { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .history-angle { font-size: 16px; font-weight: 700; color: var(--danger); font-family: monospace; }
+        
+        /* 導航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(18, 18, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(0, 212, 255, 0.1);
+            padding: 10px 0;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom, 8px));
+            display: flex;
+            justify-content: space-around;
+            z-index: 100;
+        }
+        
+        .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-muted); font-size: 10px; background: none; border: none; cursor: pointer; padding: 6px 16px; border-radius: 12px; transition: 0.3s; }
+        .nav-btn.active { color: var(--primary); background: rgba(0, 212, 255, 0.1); }
+        .nav-icon { font-size: 24px; }
+        
+        /* 彈窗 */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 24px; }
+        .modal-overlay.show { display: flex; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .modal-content { background: linear-gradient(135deg, #cc0033, var(--danger)); border-radius: 28px; padding: 36px 28px; text-align: center; max-width: 340px; width: 100%; animation: scaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 0 60px rgba(255, 51, 102, 0.5); }
+        .modal-content.report-modal { background: linear-gradient(135deg, #0066cc, var(--primary)); box-shadow: 0 0 60px rgba(0, 212, 255, 0.5); }
+        @keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .modal-icon { font-size: 72px; margin-bottom: 16px; }
+        .modal-title { font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+        .modal-message { font-size: 14px; opacity: 0.9; margin-bottom: 8px; line-height: 1.6; white-space: pre-line; }
+        .modal-time { font-size: 13px; opacity: 0.7; margin-bottom: 24px; }
+        .modal-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        
+        /* Toast */
+        .toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-100px); background: var(--bg-card); padding: 14px 24px; border-radius: 50px; font-size: 14px; font-weight: 500; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 1001; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; gap: 10px; border: 1px solid rgba(0, 212, 255, 0.2); }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background: linear-gradient(135deg, #00b894, #00a884); border: none; }
+        .toast.error { background: linear-gradient(135deg, var(--danger), #cc0033); border: none; }
+        
+        /* 頁面 */
+        .page { display: none; }
+        .page.active { display: block; }
+    </style>
+</head>
+<body>
+    <!-- ==================== 酷炫載入畫面 ==================== -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="cyber-grid"></div>
+        <div class="scan-line"></div>
+        <div class="particles" id="particles"></div>
+        <div id="dataStreams"></div>
+        
+        <div class="ring-container">
+            <div class="ring-outer"></div>
+            <div class="ring-middle"></div>
+            <div class="ring-inner"></div>
+            <div class="hexagon-core">🛡️</div>
+        </div>
+        
+        <div class="loading-text">
+            <div class="loading-title">樂齡防傾倒監測系統</div>
+            <div class="loading-subtitle">AI POSE DETECTION SYSTEM v2.0</div>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+            <div class="loading-status" id="loadingStatus">INITIALIZING SYSTEM...</div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMessage">訊息</span></div>
+    
+    <!-- 警報彈窗 -->
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal-content">
+            <div class="modal-icon">🚨</div>
+            <div class="modal-title">跌倒警示！</div>
+            <div class="modal-message" id="alertMessage">偵測到嚴重傾斜</div>
+            <div class="modal-time" id="alertTime"></div>
+            <button class="modal-btn" onclick="closeAlert()">我已確認安全</button>
+        </div>
+    </div>
+    
+    <!-- 回報彈窗 -->
+    <div class="modal-overlay" id="reportModal">
+        <div class="modal-content report-modal">
+            <div class="modal-icon">📸</div>
+            <div class="modal-title">定時回報</div>
+            <div class="modal-message" id="reportMessage">正在分析...</div>
+            <div class="modal-time" id="reportTime"></div>
+            <button class="modal-btn" onclick="closeReportModal()">確認</button>
+        </div>
+    </div>
+    
+    <div class="status-bar"></div>
+    
+    <div class="container">
+        <!-- 首頁 -->
+        <div class="page active" id="pageHome">
+            <div class="header">
+                <h1>🛡️ 樂齡守護 <span class="version-badge">v2.0</span></h1>
+                <p>AI 智慧監測 • Gemini 分析 • LINE 即時通知</p>
+            </div>
+            
+            <div class="camera-section">
+                <video id="videoElement" autoplay playsinline></video>
+                <canvas id="canvasElement"></canvas>
+                <div class="camera-placeholder" id="cameraPlaceholder">
+                    <div class="camera-placeholder-icon">📷</div>
+                    <div>點擊「開始監測」啟動攝影機</div>
+                </div>
+                <div class="camera-overlay">
+                    <div class="badge live-badge" id="liveBadge"><span class="live-dot"></span><span>LIVE</span></div>
+                    <div class="badge fps-badge" id="fpsBadge">-- FPS</div>
+                </div>
+            </div>
+            
+            <div class="status-card" id="statusCard">
+                <div class="status-header">
+                    <div class="status-icon" id="statusIcon">😊</div>
+                    <div class="status-info">
+                        <div class="status-title" id="statusTitle">準備就緒</div>
+                        <div class="status-subtitle" id="statusSubtitle">點擊下方按鈕開始監測</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card"><div class="metric-value" id="torsoAngle">--°</div><div class="metric-label">軀幹傾斜</div></div>
+                <div class="metric-card"><div class="metric-value" id="headHeight">--</div><div class="metric-label">頭部高度</div></div>
+                <div class="metric-card"><div class="metric-value" id="alertCount">0</div><div class="metric-label">今日警示</div></div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-primary" id="startBtn" onclick="toggleDetection()"><span>▶️</span><span>開始監測</span></button>
+                <button class="btn btn-outline" onclick="captureAndReport()"><span>📸</span><span>立即回報</span></button>
+            </div>
+            
+            <!-- 定時截圖回報 -->
+            <div class="report-section">
+                <div class="report-title"><span>⏰</span><span>定時截圖回報</span></div>
+                <div class="report-options">
+                    <button class="report-option" data-interval="0" onclick="setReportInterval(0)"><span class="report-option-icon">📸</span><span>立即</span></button>
+                    <button class="report-option" data-interval="1" onclick="setReportInterval(1)"><span class="report-option-icon">1️⃣</span><span>1小時</span></button>
+                    <button class="report-option" data-interval="2" onclick="setReportInterval(2)"><span class="report-option-icon">2️⃣</span><span>2小時</span></button>
+                    <button class="report-option" data-interval="3" onclick="setReportInterval(3)"><span class="report-option-icon">3️⃣</span><span>3小時</span></button>
+                    <button class="report-option" data-interval="4" onclick="setReportInterval(4)"><span class="report-option-icon">4️⃣</span><span>4小時</span></button>
+                </div>
+                <div class="report-status idle" id="reportStatus"><span>💤</span><span>尚未設定定時回報</span></div>
+            </div>
+        </div>
+        
+        <!-- 設定頁 -->
+        <div class="page" id="pageSettings">
+            <div class="header"><h1>⚙️ 系統設定</h1><p>調整偵測參數與 API 設定</p></div>
+            
+            <div class="card">
+                <div class="card-title"><span>📐</span><span>偵測參數</span></div>
+                <div class="setting-row"><span class="setting-label">傾斜角度閾值</span><input type="number" class="setting-input" id="angleThreshold" value="35" min="20" max="60"></div>
+                <div class="setting-row"><span class="setting-label">連續異常幀數</span><input type="number" class="setting-input" id="frameThreshold" value="15" min="5" max="60"></div>
+                <div class="setting-row"><span class="setting-label">通知冷卻(秒)</span><input type="number" class="setting-input" id="cooldownTime" value="60" min="10" max="300"></div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title"><span>🤖</span><span>Gemini AI 設定</span></div>
+                <div class="input-group"><label class="input-label">Gemini API Key</label><input type="password" class="text-input" id="geminiKey" placeholder="AIza..."></div>
+                <div class="help-text">📌 <strong>取得方式：</strong><br>前往 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> → Get API Key</div>
+                <button class="btn btn-cyber" style="margin-top:12px" onclick="testGemini()"><span>🧪</span> 測試 Gemini</button>
+            </div>
+            
+            <div class="card">
+                <div class="card-title"><span>🖼️</span><span>ImgBB 圖床設定（截圖上傳）</span></div>
+                <div class="input-group"><label class="input-label">ImgBB API Key</label><input type="text" class="text-input" id="imgbbKey" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></div>
+                <div class="help-text">📌 <strong>取得方式（超簡單！）：</strong><br>1. 前往 <a href="https://imgbb.com/login" target="_blank">ImgBB 註冊</a>（用 Email 或 Google）<br>2. 登入後前往 <a href="https://api.imgbb.com/" target="_blank">api.imgbb.com</a><br>3. 點擊 <strong>Get API Key</strong><br>4. 複製 32 位字元的 Key</div>
+                <button class="btn btn-outline" style="margin-top:12px" onclick="testImgbb()"><span>🧪</span> 測試上傳</button>
+            </div>
+            
+            <div class="card">
+                <div class="card-title"><span>💬</span><span>LINE Bot 設定</span></div>
+                <div class="input-group"><label class="input-label">Channel Access Token</label><input type="password" class="text-input" id="lineToken" placeholder="貼上 Token..."></div>
+                <div class="input-group"><label class="input-label">User ID</label><input type="text" class="text-input" id="lineUserId" placeholder="U..."></div>
+                <div class="help-text">📌 <a href="https://developers.line.biz/console/" target="_blank">LINE Developers</a> → Messaging API → Token / Basic settings → User ID</div>
+                <div class="btn-row">
+                    <button class="btn btn-success" onclick="saveAllSettings()"><span>💾</span> 儲存</button>
+                    <button class="btn btn-line" onclick="testLineBot()"><span>📤</span> 測試</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title"><span>🔧</span><span>其他設定</span></div>
+                <div class="setting-row"><span class="setting-label">警示音效</span><div class="toggle-switch active" id="toggleSound" onclick="toggleSetting('sound')"></div></div>
+                <div class="setting-row"><span class="setting-label">震動提醒</span><div class="toggle-switch active" id="toggleVibrate" onclick="toggleSetting('vibrate')"></div></div>
+                <div class="setting-row"><span class="setting-label">顯示骨架</span><div class="toggle-switch active" id="toggleSkeleton" onclick="toggleSetting('skeleton')"></div></div>
+            </div>
+        </div>
+        
+        <!-- 紀錄頁 -->
+        <div class="page" id="pageHistory">
+            <div class="header"><h1>📋 監測紀錄</h1><p>警示與定時回報記錄</p></div>
+            <div class="card">
+                <div class="card-title"><span>📊</span><span>今日統計</span></div>
+                <div class="metrics-grid" style="margin-top:0">
+                    <div class="metric-card"><div class="metric-value" id="statTotal">0</div><div class="metric-label">總警示</div></div>
+                    <div class="metric-card"><div class="metric-value warning" id="statWarning">0</div><div class="metric-label">中度</div></div>
+                    <div class="metric-card"><div class="metric-value danger" id="statDanger">0</div><div class="metric-label">嚴重</div></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span>🕐</span><span>近期紀錄</span></div>
+                <div id="historyList"><div class="history-empty">📭 目前沒有紀錄</div></div>
+            </div>
+            <button class="btn btn-outline" style="margin-top:16px" onclick="clearHistory()"><span>🗑️</span> 清除紀錄</button>
+        </div>
+    </div>
+    
+    <div class="bottom-nav">
+        <button class="nav-btn active" onclick="switchPage('Home')" id="navHome"><span class="nav-icon">🏠</span><span>首頁</span></button>
+        <button class="nav-btn" onclick="switchPage('Settings')" id="navSettings"><span class="nav-icon">⚙️</span><span>設定</span></button>
+        <button class="nav-btn" onclick="switchPage('History')" id="navHistory"><span class="nav-icon">📋</span><span>紀錄</span></button>
+    </div>
+
+    <script>
+        // ==================== 變數 ====================
+        let pose = null, isRunning = false, abnormalFrameCount = 0, lastAlertTime = 0;
+        let alertHistory = [], todayAlertCount = 0;
+        let lastFrameTime = performance.now(), frameCount = 0, fps = 0;
+        let initialHeadHeight = null, headHeightHistory = [];
+        let reportTimer = null, nextReportTime = null, reportIntervalHours = 0;
+        let settings = { sound: true, vibrate: true, skeleton: true };
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('canvasElement');
+        const ctx = canvas.getContext('2d');
+        
+        // ==================== 開機動畫 ====================
+        function createLoadingEffects() {
+            // 粒子
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 25; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDelay = Math.random() * 4 + 's';
+                p.style.animationDuration = (3 + Math.random() * 2) + 's';
+                p.style.background = ['#00d4ff', '#7b2cbf', '#ff3366', '#00ff88'][Math.floor(Math.random() * 4)];
+                particles.appendChild(p);
+            }
+            // 數據流
+            const streams = document.getElementById('dataStreams');
+            for (let i = 0; i < 8; i++) {
+                const s = document.createElement('div');
+                s.className = 'data-stream';
+                s.style.left = (10 + i * 12) + '%';
+                s.style.animationDelay = Math.random() * 5 + 's';
+                s.textContent = Array(30).fill().map(() => Math.random() > 0.5 ? '1' : '0').join('');
+                streams.appendChild(s);
+            }
+            // 狀態文字
+            const statuses = ['INITIALIZING SYSTEM...', 'LOADING AI MODEL...', 'CONNECTING SERVICES...', 'CALIBRATING SENSORS...', 'SYSTEM READY'];
+            let i = 0;
+            const interval = setInterval(() => {
+                document.getElementById('loadingStatus').textContent = statuses[i];
+                i++;
+                if (i >= statuses.length) clearInterval(interval);
+            }, 500);
+        }
+        
+        // ==================== 初始化 ====================
+        async function init() {
+            createLoadingEffects();
+            loadSettings();
+            loadHistory();
+            pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
+            pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+            pose.onResults(onResults);
+            setTimeout(() => document.getElementById('loadingScreen').classList.add('hide'), 3000);
+        }
+        
+        // ==================== 攝影機 ====================
+        async function toggleDetection() { isRunning ? stopDetection() : await startDetection(); }
+        
+        async function startDetection() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
+                video.srcObject = stream;
+                await video.play();
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                isRunning = true;
+                abnormalFrameCount = 0;
+                initialHeadHeight = null;
+                headHeightHistory = [];
+                updateUIState();
+                processFrame();
+                showToast('✅', '監測已啟動', 'success');
+            } catch (e) { showToast('❌', '無法存取攝影機', 'error'); }
+        }
+        
+        function stopDetection() {
+            isRunning = false;
+            if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updateUIState();
+            showToast('⏹️', '監測已停止');
+        }
+        
+        async function processFrame() {
+            if (!isRunning) return;
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFrameTime >= 1000) { fps = frameCount; frameCount = 0; lastFrameTime = now; document.getElementById('fpsBadge').textContent = `${fps} FPS`; }
+            try { await pose.send({ image: video }); } catch (e) {}
+            requestAnimationFrame(processFrame);
+        }
+        
+        // ==================== 骨架偵測 ====================
+        function onResults(results) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!results.poseLandmarks) { updateStatus('searching', '🔍', '搜尋中...', '請站在攝影機前'); return; }
+            const lm = results.poseLandmarks;
+            if (settings.skeleton) drawSkeleton(lm);
+            const metrics = calcMetrics(lm);
+            updateMetrics(metrics);
+            analyzeFall(metrics);
+        }
+        
+        function drawSkeleton(lm) {
+            const w = canvas.width, h = canvas.height;
+            const conn = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.7)';
+            ctx.lineWidth = 3;
+            conn.forEach(([i, j]) => { const p1 = lm[i], p2 = lm[j]; if (p1?.visibility > 0.5 && p2?.visibility > 0.5) { ctx.beginPath(); ctx.moveTo(p1.x * w, p1.y * h); ctx.lineTo(p2.x * w, p2.y * h); ctx.stroke(); } });
+            lm.forEach(l => { if (l.visibility > 0.5) { ctx.beginPath(); ctx.arc(l.x * w, l.y * h, 5, 0, Math.PI * 2); ctx.fillStyle = '#00d4ff'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); } });
+            const ls = lm[11], rs = lm[12], lh = lm[23], rh = lm[24];
+            if (ls?.visibility > 0.5 && rs?.visibility > 0.5 && lh?.visibility > 0.5 && rh?.visibility > 0.5) {
+                const sm = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 }, hm = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+                const angle = calcAngle(sm, hm), th = parseInt(document.getElementById('angleThreshold').value);
+                ctx.strokeStyle = angle > th ? '#ff3366' : angle > th * 0.7 ? '#ffcc00' : '#00ff88';
+                ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.moveTo(sm.x * w, sm.y * h); ctx.lineTo(hm.x * w, hm.y * h); ctx.stroke();
+            }
+        }
+        
+        function calcMetrics(lm) {
+            const ls = lm[11], rs = lm[12], lh = lm[23], rh = lm[24], nose = lm[0];
+            const sm = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 }, hm = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+            return { torsoAngle: calcAngle(sm, hm), headHeight: calcHead(nose, hm), isValid: ls.visibility > 0.5 && rs.visibility > 0.5 && lh.visibility > 0.5 && rh.visibility > 0.5 };
+        }
+        
+        function calcAngle(s, h) { const dx = Math.abs(s.x - h.x), dy = Math.abs(s.y - h.y); return dy < 0.001 ? 90 : Math.atan(dx / dy) * (180 / Math.PI); }
+        
+        function calcHead(nose, hip) {
+            const diff = hip.y - nose.y;
+            headHeightHistory.push(diff);
+            if (headHeightHistory.length > 30) headHeightHistory.shift();
+            if (!initialHeadHeight && headHeightHistory.length >= 15) initialHeadHeight = headHeightHistory.slice(0, 15).reduce((a, b) => a + b, 0) / 15;
+            return initialHeadHeight ? diff / initialHeadHeight : 1;
+        }
+        
+        function analyzeFall(m) {
+            const ath = parseInt(document.getElementById('angleThreshold').value), fth = parseInt(document.getElementById('frameThreshold').value), cd = parseInt(document.getElementById('cooldownTime').value) * 1000;
+            const abnormal = m.torsoAngle > ath || m.headHeight < 0.5;
+            const severity = m.torsoAngle > ath * 1.5 || m.headHeight < 0.5 ? 'danger' : 'warning';
+            if (abnormal) {
+                abnormalFrameCount++;
+                if (abnormalFrameCount >= fth) {
+                    const now = Date.now();
+                    if (now - lastAlertTime > cd) { triggerAlert(m, severity); lastAlertTime = now; }
+                    updateStatus('danger', '🚨', '危險！', `傾斜 ${m.torsoAngle.toFixed(1)}°`);
+                } else { updateStatus('warning', '⚠️', '注意！', `偵測中 ${Math.round(abnormalFrameCount / fth * 100)}%`); }
+            } else { abnormalFrameCount = Math.max(0, abnormalFrameCount - 2); updateStatus('normal', '😊', '正常', `傾斜 ${m.torsoAngle.toFixed(1)}°`); }
+        }
+        
+        // ==================== 警示 ====================
+        function triggerAlert(m, severity) {
+            const now = new Date();
+            document.getElementById('alertMessage').textContent = `傾斜角度: ${m.torsoAngle.toFixed(1)}°\n請立即確認長輩安全！`;
+            document.getElementById('alertTime').textContent = now.toLocaleString('zh-TW');
+            document.getElementById('alertModal').classList.add('show');
+            if (settings.sound) playSound();
+            if (settings.vibrate && 'vibrate' in navigator) navigator.vibrate([500, 200, 500]);
+            todayAlertCount++;
+            document.getElementById('alertCount').textContent = todayAlertCount;
+            localStorage.setItem('todayAlertCount', todayAlertCount);
+            localStorage.setItem('alertDate', new Date().toDateString());
+            alertHistory.unshift({ time: now.toISOString(), angle: m.torsoAngle.toFixed(1), severity, type: 'alert' });
+            if (alertHistory.length > 100) alertHistory.pop();
+            localStorage.setItem('alertHistory', JSON.stringify(alertHistory));
+            updateHistoryDisplay();
+            
+            // 擷取畫面並發送
+            const c = document.createElement('canvas');
+            c.width = video.videoWidth; c.height = video.videoHeight;
+            c.getContext('2d').drawImage(video, 0, 0);
+            const base64 = c.toDataURL('image/jpeg', 0.8).split(',')[1];
+            sendLineAlert(m, severity, base64);
+        }
+        
+        function closeAlert() { document.getElementById('alertModal').classList.remove('show'); }
+        function playSound() { try { const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = 0.3; o.start(); setTimeout(() => o.stop(), 400); } catch (e) {} }
+        
+        // ==================== 定時截圖回報 ====================
+        function setReportInterval(hours) {
+            if (reportTimer) clearInterval(reportTimer);
+            document.querySelectorAll('.report-option').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.report-option[data-interval="${hours}"]`).classList.add('active');
+            if (hours === 0) { captureAndReport(); document.getElementById('reportStatus').className = 'report-status idle'; document.getElementById('reportStatus').innerHTML = '<span>💤</span><span>尚未設定定時回報</span>'; return; }
+            reportIntervalHours = hours;
+            nextReportTime = Date.now() + hours * 3600000;
+            updateCountdown();
+            reportTimer = setInterval(() => { updateCountdown(); if (Date.now() >= nextReportTime) { captureAndReport(); nextReportTime = Date.now() + hours * 3600000; } }, 1000);
+            showToast('⏰', `已設定每 ${hours} 小時回報`, 'success');
+        }
+        
+        function updateCountdown() {
+            const rem = Math.max(0, nextReportTime - Date.now());
+            const h = Math.floor(rem / 3600000), m = Math.floor((rem % 3600000) / 60000), s = Math.floor((rem % 60000) / 1000);
+            const el = document.getElementById('reportStatus');
+            el.className = 'report-status';
+            el.innerHTML = `<span>⏱️</span><span>下次回報：</span><span class="report-countdown">${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</span>`;
+        }
+        
+        async function captureAndReport() {
+            if (!isRunning) { showToast('⚠️', '請先啟動監測', 'error'); return; }
+            showToast('📸', '擷取畫面中...', 'success');
+            const c = document.createElement('canvas');
+            c.width = video.videoWidth; c.height = video.videoHeight;
+            c.getContext('2d').drawImage(video, 0, 0);
+            const base64 = c.toDataURL('image/jpeg', 0.8).split(',')[1];
+            const analysis = await analyzeWithGemini(base64);
+            const now = new Date();
+            alertHistory.unshift({ time: now.toISOString(), type: 'report', analysis });
+            localStorage.setItem('alertHistory', JSON.stringify(alertHistory));
+            updateHistoryDisplay();
+            await sendLineReport(analysis, now, base64);
+            document.getElementById('reportMessage').textContent = analysis;
+            document.getElementById('reportTime').textContent = now.toLocaleString('zh-TW');
+            document.getElementById('reportModal').classList.add('show');
+            showToast('✅', '回報已發送！', 'success');
+        }
+        
+        function closeReportModal() { document.getElementById('reportModal').classList.remove('show'); }
+        
+        // ==================== Gemini ====================
+        async function analyzeWithGemini(base64) {
+            const key = localStorage.getItem('geminiKey');
+            if (!key) return '（未設定 Gemini API Key）';
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: '請用繁體中文，簡短分析（50字內）這張照片中人物的姿態安全狀況：1.姿勢描述 2.是否有跌倒風險 3.建議。如沒看到人請說明。' }, { inline_data: { mime_type: 'image/jpeg', data: base64 } }] }] })
+                });
+                const data = await res.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || '分析完成';
+            } catch (e) { return '（AI 分析失敗）'; }
+        }
+        
+        async function testGemini() {
+            const key = document.getElementById('geminiKey').value.trim();
+            if (!key) { showToast('❌', '請輸入 API Key', 'error'); return; }
+            showToast('🧪', '測試中...', 'success');
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: '回答：1+1=?' }] }] })
+                });
+                if (res.ok) { localStorage.setItem('geminiKey', key); showToast('✅', 'Gemini 連線成功！', 'success'); }
+                else showToast('❌', 'API Key 無效', 'error');
+            } catch (e) { showToast('❌', '連線失敗', 'error'); }
+        }
+        
+        // ==================== LINE ====================
+        async function sendLineAlert(m, severity, imageBase64) {
+            const token = localStorage.getItem('lineToken'), userId = localStorage.getItem('lineUserId');
+            if (!token || !userId) return;
+            const now = new Date().toLocaleString('zh-TW');
+            
+            const messages = [];
+            
+            // 嘗試上傳圖片到 ImgBB
+            if (imageBase64) {
+                const imgUrl = await uploadToImgbb(imageBase64);
+                if (imgUrl) {
+                    messages.push({
+                        type: 'image',
+                        originalContentUrl: imgUrl,
+                        previewImageUrl: imgUrl
+                    });
+                }
+            }
+            
+            // 加入文字訊息
+            messages.push({
+                type: 'text',
+                text: `🚨 跌倒警示！\n\n⏰ ${now}\n📐 傾斜角度: ${m.torsoAngle.toFixed(1)}°\n⚡ 程度: ${severity === 'danger' ? '🚨 嚴重' : '⚠️ 中度'}\n\n請立即確認長輩安全！\n\n🛡️ 樂齡防傾倒系統 v2.0`
+            });
+            
+            await sendLineMessage(token, userId, messages);
+        }
+        
+        // LINE 發送（使用 CORS 代理）
+        async function sendLineMessage(token, userId, messages) {
+            const lineUrl = 'https://api.line.me/v2/bot/message/push';
+            const body = JSON.stringify({ to: userId, messages });
+            
+            // 方法1: 使用 corsproxy.io
+            try {
+                const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(lineUrl), {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: body
+                });
+                if (res.ok || res.status === 200) return true;
+            } catch (e) { console.log('corsproxy.io failed:', e); }
+            
+            // 方法2: 使用 cors-anywhere (備用)
+            try {
+                const res = await fetch('https://cors-anywhere.herokuapp.com/' + lineUrl, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${token}`,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: body
+                });
+                if (res.ok || res.status === 200) return true;
+            } catch (e) { console.log('cors-anywhere failed:', e); }
+            
+            // 方法3: 直接呼叫（可能在某些環境可用）
+            try {
+                const res = await fetch(lineUrl, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: body
+                });
+                if (res.ok) return true;
+            } catch (e) { console.log('Direct call failed:', e); }
+            
+            return false;
+        }
+        
+        async function sendLineReport(analysis, time, imageBase64) {
+            const token = localStorage.getItem('lineToken'), userId = localStorage.getItem('lineUserId');
+            if (!token || !userId) return;
+            
+            const messages = [];
+            
+            // 嘗試上傳圖片到 ImgBB
+            if (imageBase64) {
+                const imgUrl = await uploadToImgbb(imageBase64);
+                if (imgUrl) {
+                    messages.push({
+                        type: 'image',
+                        originalContentUrl: imgUrl,
+                        previewImageUrl: imgUrl
+                    });
+                }
+            }
+            
+            // 加入文字訊息
+            messages.push({
+                type: 'text',
+                text: `📸 定時現況回報\n\n⏰ ${time.toLocaleString('zh-TW')}\n\n🤖 Gemini AI 分析：\n${analysis}\n\n🛡️ 樂齡防傾倒系統 v2.0`
+            });
+            
+            await sendLineMessage(token, userId, messages);
+        }
+        
+        async function testLineBot() {
+            const token = document.getElementById('lineToken').value.trim(), userId = document.getElementById('lineUserId').value.trim();
+            if (!token || !userId) { showToast('❌', '請填寫完整', 'error'); return; }
+            showToast('📤', '發送中...', 'success');
+            
+            const messages = [{ type: 'text', text: '🧪 測試成功！\n\n樂齡防傾倒監測系統 v2.0 已連線。\n\n✅ 即時跌倒偵測\n✅ 定時截圖回報\n✅ Gemini AI 分析\n\n🛡️ 安心守護每一刻' }];
+            const result = await sendLineMessage(token, userId, messages);
+            
+            if (result) { 
+                showToast('✅', 'LINE 連線成功！', 'success'); 
+                saveAllSettings(); 
+            } else { 
+                showToast('❌', 'Token 或 ID 錯誤', 'error'); 
+            }
+        }
+        
+        // ==================== UI ====================
+        function updateUIState() {
+            const btn = document.getElementById('startBtn'), live = document.getElementById('liveBadge'), ph = document.getElementById('cameraPlaceholder');
+            if (isRunning) { btn.innerHTML = '<span>⏹️</span><span>停止監測</span>'; btn.classList.remove('btn-primary'); btn.classList.add('btn-danger'); live.classList.add('active'); ph.classList.add('hidden'); }
+            else { btn.innerHTML = '<span>▶️</span><span>開始監測</span>'; btn.classList.remove('btn-danger'); btn.classList.add('btn-primary'); live.classList.remove('active'); ph.classList.remove('hidden'); }
+        }
+        
+        function updateStatus(type, icon, title, sub) {
+            document.getElementById('statusCard').className = 'status-card ' + type;
+            document.getElementById('statusIcon').textContent = icon;
+            document.getElementById('statusTitle').textContent = title;
+            document.getElementById('statusSubtitle').textContent = sub;
+        }
+        
+        function updateMetrics(m) {
+            const el = document.getElementById('torsoAngle'), th = parseInt(document.getElementById('angleThreshold').value);
+            el.textContent = `${m.torsoAngle.toFixed(1)}°`;
+            el.className = 'metric-value ' + (m.torsoAngle > th ? 'danger' : m.torsoAngle > th * 0.7 ? 'warning' : 'success');
+            document.getElementById('headHeight').textContent = m.headHeight.toFixed(2);
+        }
+        
+        function switchPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+            document.getElementById('page' + page).classList.add('active');
+            document.getElementById('nav' + page).classList.add('active');
+            if (page === 'History') updateHistoryDisplay();
+        }
+        
+        // ==================== 設定 ====================
+        function toggleSetting(key) { settings[key] = !settings[key]; document.getElementById('toggle' + key.charAt(0).toUpperCase() + key.slice(1)).classList.toggle('active', settings[key]); localStorage.setItem('settings', JSON.stringify(settings)); }
+        function saveAllSettings() { ['lineToken', 'lineUserId', 'geminiKey', 'imgbbKey'].forEach(k => { const v = document.getElementById(k).value.trim(); if (v) localStorage.setItem(k, v); }); showToast('💾', '設定已儲存', 'success'); }
+        function loadSettings() {
+            const s = localStorage.getItem('settings'); if (s) { settings = JSON.parse(s); Object.keys(settings).forEach(k => { const el = document.getElementById('toggle' + k.charAt(0).toUpperCase() + k.slice(1)); if (el) el.classList.toggle('active', settings[k]); }); }
+            ['lineToken', 'lineUserId', 'geminiKey', 'imgbbKey'].forEach(k => { const v = localStorage.getItem(k); if (v) document.getElementById(k).value = v; });
+            if (localStorage.getItem('alertDate') === new Date().toDateString()) { todayAlertCount = parseInt(localStorage.getItem('todayAlertCount') || '0'); document.getElementById('alertCount').textContent = todayAlertCount; }
+        }
+        
+        // ==================== ImgBB 上傳 ====================
+        async function uploadToImgbb(base64Image) {
+            const apiKey = localStorage.getItem('imgbbKey');
+            if (!apiKey) return null;
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', base64Image);
+                
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) return data.data.url;
+                return null;
+            } catch (e) { console.error('ImgBB error:', e); return null; }
+        }
+        
+        async function testImgbb() {
+            const apiKey = document.getElementById('imgbbKey').value.trim();
+            if (!apiKey) { showToast('❌', '請輸入 API Key', 'error'); return; }
+            showToast('🧪', '測試上傳中...', 'success');
+            
+            // 建立測試圖片
+            const c = document.createElement('canvas');
+            c.width = 200; c.height = 100;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = '#00d4ff';
+            ctx.fillRect(0, 0, 200, 100);
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px sans-serif';
+            ctx.fillText('Test OK!', 60, 55);
+            const base64 = c.toDataURL('image/png').split(',')[1];
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', base64);
+                
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('imgbbKey', apiKey);
+                    showToast('✅', 'ImgBB 上傳成功！', 'success');
+                } else {
+                    showToast('❌', 'API Key 無效', 'error');
+                }
+            } catch (e) { showToast('❌', '上傳失敗', 'error'); }
+        }
+        
+        // ==================== 歷史 ====================
+        function loadHistory() { const s = localStorage.getItem('alertHistory'); if (s) { alertHistory = JSON.parse(s); updateHistoryDisplay(); } }
+        function updateHistoryDisplay() {
+            const list = document.getElementById('historyList'), today = new Date().toDateString();
+            const todayRec = alertHistory.filter(r => new Date(r.time).toDateString() === today && r.type === 'alert');
+            document.getElementById('statTotal').textContent = todayRec.length;
+            document.getElementById('statWarning').textContent = todayRec.filter(r => r.severity === 'warning').length;
+            document.getElementById('statDanger').textContent = todayRec.filter(r => r.severity === 'danger').length;
+            if (!alertHistory.length) { list.innerHTML = '<div class="history-empty">📭 目前沒有紀錄</div>'; return; }
+            list.innerHTML = alertHistory.slice(0, 20).map(item => {
+                const time = new Date(item.time).toLocaleString('zh-TW');
+                if (item.type === 'report') return `<div class="history-item"><div class="history-icon report">📸</div><div class="history-info"><div class="history-title">定時回報</div><div class="history-time">${time}</div></div></div>`;
+                return `<div class="history-item"><div class="history-icon ${item.severity}">${item.severity === 'danger' ? '🚨' : '⚠️'}</div><div class="history-info"><div class="history-title">${item.severity === 'danger' ? '嚴重警示' : '中度警示'}</div><div class="history-time">${time}</div></div><div class="history-angle">${item.angle}°</div></div>`;
+            }).join('');
+        }
+        function clearHistory() { if (confirm('確定清除所有紀錄？')) { alertHistory = []; localStorage.removeItem('alertHistory'); updateHistoryDisplay(); showToast('🗑️', '已清除'); } }
+        
+        // ==================== Toast ====================
+        function showToast(icon, msg, type = '') { const t = document.getElementById('toast'); document.getElementById('toastIcon').textContent = icon; document.getElementById('toastMessage').textContent = msg; t.className = 'toast show' + (type ? ' ' + type : ''); setTimeout(() => t.classList.remove('show'), 3000); }
+        
+        // ==================== 啟動 ====================
+        init();
+    </script>
+</body>
+</html>
